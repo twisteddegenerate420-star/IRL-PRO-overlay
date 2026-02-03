@@ -60,7 +60,6 @@
   </div>
 
   <script>
-    // Your original ticking time - unchanged
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -87,23 +86,24 @@
       '🌘': 'Waning Crescent'
     };
 
-    // Fetch with moon added (%m at end), ?u for °F/mph/inches
-    fetch('https://wttr.in/Rocklin?format="%c %t %h %w(mph) %p %m"&u')
+    // Fetch with inches precip (%P) and moon (%m), ?u forces US units
+    fetch('https://wttr.in/Rocklin?format="%c %t %h %w %P %m"&u')
       .then(r => r.text())
       .then(text => {
         let cleaned = text.trim()
           .replace(/"/g, '')
           .replace(/\s+/g, ' ')
-          .replace(/km\/h/g, 'mph')
+          .replace(/^\+/, '')
+          .replace(/\(.*?\)/g, '') // remove (mph) or any parens
+          .replace(/mm|cm|km\/h|hPa|C|°C|Pa/g, '') // kill metric/pressure
           .trim();
 
-        // Split off moon emoji (last token)
         const parts = cleaned.split(' ');
         let moonEmoji = parts.pop() || '';
         if (!/[🌑🌒🌓🌔🌕🌖🌗🌘]/.test(moonEmoji)) moonEmoji = '';
         const weatherStr = parts.join(' ');
 
-        document.getElementById('weather').innerText = weatherStr || 'No weather data';
+        document.getElementById('weather').innerText = weatherStr || 'No data';
         document.getElementById('moon-emoji').innerText = moonEmoji;
         document.getElementById('moon-desc').innerText = moonDescriptions[moonEmoji] || '';
       })
