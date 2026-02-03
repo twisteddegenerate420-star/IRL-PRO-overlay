@@ -125,22 +125,17 @@
       return null;
     }
 
-    // Fetch moon phase from wttr.in (only for emoji)
     function fetchMoon(lat, lon, callback) {
       fetch(`https://wttr.in/\( {lat}, \){lon}?format=%m`)
         .then(r => r.text())
-        .then(text => {
-          const moonEmoji = text.trim();
-          callback(moonEmoji);
-        })
+        .then(text => callback(text.trim()))
         .catch(() => callback(''));
     }
 
-    // Main weather from Open-Meteo (forced US units, no cache issues)
     function fetchWeather(lat, lon) {
-      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=\( {lat}&longitude= \){lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=\( {lat}&longitude= \){lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
 
-      fetch(weatherUrl)
+      fetch(url)
         .then(r => r.json())
         .then(data => {
           if (data.current) {
@@ -148,33 +143,36 @@
             const humidity = data.current.relative_humidity_2m;
             const wind = Math.round(data.current.wind_speed_10m);
             const precip = data.current.precipitation.toFixed(2);
-            const condition = temp > 70 ? '☀' : temp > 50 ? '⛅' : '☁'; // simple icon
+            const condition = temp > 70 ? '☀' : temp > 50 ? '⛅' : '☁';
 
             const weatherStr = `${condition} ${temp}°F ${humidity}% ${wind}mph ${precip}in`;
             document.getElementById('weather').innerText = weatherStr;
-
-            // Get moon from wttr.in
-            fetchMoon(lat, lon, moonEmoji => {
-              document.getElementById('moon-emoji').innerText = moonEmoji;
-              document.getElementById('moon-desc').innerText = moonDescriptions[moonEmoji] || '';
-            });
           } else {
             document.getElementById('weather').innerText = 'Weather data error';
           }
-        })
-        .catch(() => {
-          document.getElementById('weather').innerText = 'Weather load failed';
-        });
 
-      const holiday = getHolidayInfo();
-      document.getElementById('holiday').innerText = holiday ? `${holiday.emoji} ${holiday.name}` : '';
+          fetchMoon(lat, lon, moonEmoji => {
+            document.getElementById('moon-emoji').innerText = moonEmoji;
+            document.getElementById('moon-desc').innerText = moonDescriptions[moonEmoji] || '';
+          });
+
+          const holiday = getHolidayInfo();
+          document.getElementById('holiday').innerText = holiday ? `${holiday.emoji} ${holiday.name}` : '';
+        })
+        .catch(err => {
+          console.log('Weather error:', err);
+          document.getElementById('weather').innerText = 'Weather load failed (check network)';
+        });
     }
 
     function loadWeather() {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => fetchWeather(pos.coords.latitude, pos.coords.longitude),
-          () => document.getElementById('weather').innerText = 'Location denied - allow in Chrome settings',
+          err => {
+            console.log('Geo error:', err.message);
+            document.getElementById('weather').innerText = 'Location denied - allow in Chrome';
+          },
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
       } else {
@@ -183,7 +181,7 @@
     }
 
     loadWeather();
-    setInterval(loadWeather, 600000); // 10 min
+    setInterval(loadWeather, 300000); // 5 min
   </script>
 </body>
 </html>
