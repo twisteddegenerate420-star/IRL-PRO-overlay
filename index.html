@@ -35,7 +35,7 @@
       margin-top: 4px;
     }
     #moon-line {
-      margin-top: 4px;
+      margin-top: 6px;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -60,7 +60,7 @@
   </div>
 
   <script>
-    // Ticking time
+    // Ticking time (MM/DD/YYYY HH:MM:SS)
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -69,13 +69,12 @@
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const seconds = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('datetime').innerText = month + '/' + day + '/' + year + ' ' + hours + ':' + minutes + ':' + seconds;
+      document.getElementById('datetime').innerText = `\( {month}/ \){day}/${year} \( {hours}: \){minutes}:${seconds}`;
     }
-
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Local moon phase calculation (accurate, no wttr.in dependency)
+    // Local moon phase (kept as-is)
     function getMoonPhase() {
       const now = new Date();
       const year = now.getFullYear();
@@ -111,21 +110,19 @@
       document.getElementById('moon-emoji').innerText = emoji;
       document.getElementById('moon-desc').innerText = desc;
     }
-
     getMoonPhase();
     setInterval(getMoonPhase, 3600000); // hourly
 
-    // Weather fetch - stable Rocklin version
-    fetch('https://wttr.in/Rocklin?format="%c %t %h %w"&u')
+    // Weather from wttr.in – F, mph, no location name, only metrics + icon
+    fetch('https://wttr.in/Rocklin?format="%c %t(%F) %h %w(mph) %p"')
       .then(r => r.text())
       .then(text => {
+        // Clean up: remove quotes, parentheses, extra spaces, location if it slips in
         let cleaned = text.trim()
           .replace(/"/g, '')
+          .replace(/\([^)]*\)/g, '')
           .replace(/\s+/g, ' ')
-          .replace(/^\+/, '')
-          .replace(/\(.*?\)/g, '')
-          .replace(/hPa|Pa|mm|cm|km\/h|C|°C|Pa|1025|1025hPa|in\([^)]*\)/g, '')
-          .replace(/\d{4}/g, '') // remove any 4-digit pressure
+          .replace(/Rocklin:/g, '')  // remove any leaked location name
           .trim();
 
         document.getElementById('weather').innerText = cleaned || 'No weather data';
