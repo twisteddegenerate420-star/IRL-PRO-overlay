@@ -58,7 +58,8 @@
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Forced °F, mph, inches precip - no metric, no extras
+    // Fixed format: condition temp humidity wind precip_inches
+    // ?u forces °F, mph, inches; %P = precip in inches
     fetch('https://wttr.in/Rocklin?format="%c %t %h %w %P"&u')
       .then(r => r.text())
       .then(text => {
@@ -67,7 +68,7 @@
           .replace(/\s+/g, ' ')
           .replace(/^\+/, '')
           .replace(/\(.*?\)/g, '') // remove any (mph) or parens
-          .replace(/hPa|Pa|mm|cm|km\/h|C|°C|in\([^)]*\)/g, '') // kill metric/pressure
+          .replace(/hPa|Pa|mm|cm|km\/h|C|°C|1025|in\([^)]*\)/g, '') // kill pressure/metric
           .trim();
 
         document.getElementById('weather').innerText = cleaned || 'No weather data';
