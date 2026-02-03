@@ -36,12 +36,16 @@
     }
     #moon {
       margin-top: 4px;
-      font-size: 28px; /* bigger emoji for visibility */
+      font-size: 28px; /* bigger for emoji */
+    }
+    #moon-desc {
+      margin-top: 2px;
+      font-size: 18px;
     }
     #holiday {
       margin-top: 4px;
       font-style: italic;
-      color: #00FF00; /* brighter green */
+      color: #00FF00;
     }
   </style>
 </head>
@@ -50,11 +54,12 @@
     <div class="timestamp" id="datetime">Loading time...</div>
     <div id="weather">Loading weather...</div>
     <div id="moon">Loading moon...</div>
+    <div id="moon-desc"></div>
     <div id="holiday"></div>
   </div>
 
   <script>
-    // Ticking local date/time (device timezone, e.g. MST)
+    // Fixed ticking local date/time (MST or device timezone)
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -63,20 +68,31 @@
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const seconds = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('datetime').innerText = 
-        `\( {month}/ \){day}/${year} \( {hours}: \){minutes}:${seconds}`;
+      document.getElementById('datetime').innerText = `\( {month}/ \){day}/${year} \( {hours}: \){minutes}:${seconds}`;
     }
     setInterval(updateTime, 1000);
     updateTime();
 
-    // US federal holidays checker (excluding Juneteenth as requested)
-    function getHolidayName(date) {
-      const month = date.getMonth(); // 0=Jan, 11=Dec
+    // Moon phase emoji to description map
+    const moonDescriptions = {
+      '🌑': 'New Moon',
+      '🌒': 'Waxing Crescent',
+      '🌓': 'First Quarter',
+      '🌔': 'Waxing Gibbous',
+      '🌕': 'Full Moon',
+      '🌖': 'Waning Gibbous',
+      '🌗': 'Last Quarter',
+      '🌘': 'Waning Crescent',
+      '🌙': 'Crescent Moon' // fallback if any variant
+    };
+
+    // US federal holidays checker (no Juneteenth, with holiday-specific emojis)
+    function getHolidayInfo(date) {
+      const month = date.getMonth();
       const day = date.getDate();
       const year = date.getFullYear();
 
-      // Helper: find nth weekday of the month (e.g. 3rd Monday: n=3, weekday=1)
-      // For last: use large n like 5, it will cap at actual last
+      // Helper for nth weekday (0=Sun, 1=Mon, ..., 6=Sat)
       function nthWeekday(n, targetWeekday, m) {
         let d = new Date(year, m, 1);
         let count = 0;
@@ -87,31 +103,34 @@
           }
           d.setDate(d.getDate() + 1);
         }
-        // For "last" (n= -1 or large), return the last one found
-        if (n < 0 || n > 5) return d.getDate() - 1; // last before overflow
+        // For "last" (n=5 or higher), return last matching
+        if (n >= 5) {
+          d.setDate(d.getDate() - 1);
+          while (d.getDay() !== targetWeekday) d.setDate(d.getDate() - 1);
+          return d.getDate();
+        }
         return null;
       }
 
-      // Fixed dates
-      if (month === 0 && day === 1) return "New Year's Day";
-      if (month === 6 && day === 4) return "Independence Day";
-      if (month === 10 && day === 11) return "Veterans Day";
-      if (month === 11 && day === 25) return "Christmas Day";
+      // Fixed dates + observed adjustments (basic: if weekend, check nearby but use actual date)
+      if (month === 0 && day === 1) return {name: "New Year's Day", emoji: "🎉"};
+      if (month === 6 && day === 4) return {name: "Independence Day", emoji: "🎆"};
+      if (month === 10 && day === 11) return {name: "Veterans Day", emoji: "🇺🇸"};
+      if (month === 11 && day === 25) return {name: "Christmas Day", emoji: "🎄"};
 
-      // Variable
-      if (month === 0 && day === nthWeekday(3, 1, 0)) return "Martin Luther King Jr. Day"; // 3rd Mon Jan
-      if (month === 1 && day === nthWeekday(3, 1, 1)) return "Presidents' Day"; // 3rd Mon Feb
-      if (month === 4 && day === nthWeekday(5, 1, 4)) return "Memorial Day"; // last Mon May (use 5 to get last)
-      if (month === 8 && day === nthWeekday(1, 1, 8)) return "Labor Day"; // 1st Mon Sep
-      if (month === 9 && day === nthWeekday(2, 1, 9)) return "Columbus Day"; // 2nd Mon Oct
-      if (month === 10 && day === nthWeekday(4, 4, 10)) return "Thanksgiving Day"; // 4th Thu Nov
+      // Variable dates
+      if (month === 0 && day === nthWeekday(3, 1, 0)) return {name: "Martin Luther King Jr. Day", emoji: "🎉"};
+      if (month === 1 && day === nthWeekday(3, 1, 1)) return {name: "Presidents' Day", emoji: "🎉"};
+      if (month === 4 && day === nthWeekday(5, 1, 4)) return {name: "Memorial Day", emoji: "🎉"};
+      if (month === 8 && day === nthWeekday(1, 1, 8)) return {name: "Labor Day", emoji: "🎉"};
+      if (month === 9 && day === nthWeekday(2, 1, 9)) return {name: "Columbus Day", emoji: "🎉"};
+      if (month === 10 && day === nthWeekday(4, 4, 10)) return {name: "Thanksgiving Day", emoji: "🦃"};
 
       return null;
     }
 
-    // Fetch weather + moon phase
+    // Fetch weather + moon
     function fetchWeather(lat, lon) {
-      // Format: condition temp humidity wind precip moon
       const url = `https://wttr.in/\( {lat}, \){lon}?format=" %c %t %h %w %p %m "&u`;
 
       fetch(url)
@@ -126,28 +145,31 @@
             .replace(/km\/h/g, 'mph')
             .trim();
 
-          // Split to separate weather and moon (last token is moon emoji)
           const parts = cleaned.split(' ');
-          const moon = parts.pop(); // moon phase emoji
+          const moonEmoji = parts.pop() || '🌑'; // last is moon emoji
           const weatherStr = parts.join(' ');
 
           document.getElementById('weather').innerText = weatherStr || 'No weather data';
-          document.getElementById('moon').innerText = moon || 'No moon phase';
+          document.getElementById('moon').innerText = moonEmoji;
 
-          // Holiday check
+          // Set moon description
+          const desc = moonDescriptions[moonEmoji] || 'Unknown Moon Phase';
+          document.getElementById('moon-desc').innerText = desc;
+
+          // Holiday
           const now = new Date();
-          const holiday = getHolidayName(now);
-          document.getElementById('holiday').innerText = holiday ? `🎉 ${holiday}` : '';
+          const holidayInfo = getHolidayInfo(now);
+          document.getElementById('holiday').innerText = holidayInfo ? `${holidayInfo.emoji} ${holidayInfo.name}` : '';
         })
         .catch(err => {
           console.error(err);
           document.getElementById('weather').innerText = 'Weather failed';
           document.getElementById('moon').innerText = '';
+          document.getElementById('moon-desc').innerText = '';
           document.getElementById('holiday').innerText = '';
         });
     }
 
-    // Load location & weather
     function loadWeather() {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -168,7 +190,7 @@
     }
 
     loadWeather();
-    setInterval(loadWeather, 10 * 60 * 1000); // Refresh every 10 min
+    setInterval(loadWeather, 10 * 60 * 1000); // 10 min refresh
   </script>
 </body>
 </html>
