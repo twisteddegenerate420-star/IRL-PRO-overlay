@@ -60,7 +60,7 @@
   </div>
 
   <script>
-    // FIXED ticking time - no curly braces around variables
+    // Ticking time (working in your screenshot)
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -75,7 +75,7 @@
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Local moon phase (unchanged from your working version)
+    // Local moon phase (unchanged, working)
     function getMoonPhase() {
       const now = new Date();
       const year = now.getFullYear();
@@ -115,7 +115,7 @@
     getMoonPhase();
     setInterval(getMoonPhase, 3600000); // hourly
 
-    // Weather from wttr.in - F, mph, NO location name (your working base)
+    // Weather from wttr.in - F, mph, NO location name, NO mm (precip as % only)
     fetch('https://wttr.in/?format="%c %t(%F) %h %w(mph) %p\n"&u')
       .then(r => r.text())
       .then(text => {
@@ -123,6 +123,9 @@
           .replace(/"/g, '')
           .replace(/\([^)]*\)/g, '')  // remove (F) note
           .replace(/\s+/g, ' ')
+          .replace(/mm/g, '')  // remove any mm completely
+          .replace(/0.0/g, '0')  // simplify 0.0 to 0 for precip %
+          .replace(/Rocklin:/g, '')  // remove location name
           .trim();
 
         document.getElementById('weather').innerText = cleaned || 'No weather data';
