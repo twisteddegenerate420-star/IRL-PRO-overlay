@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Minimal Lime Green Weather Overlay</title>
+  <title>Truck Weather Overlay - Lime Green</title>
   <style>
     body, html {
       margin: 0;
@@ -21,48 +22,43 @@
       left: 10px;
       padding: 6px 10px;
       background: transparent;
-      font-size: 20px;
-      line-height: 1.3;
+      font-size: 22px;
+      line-height: 1.4;
       pointer-events: none;
       white-space: nowrap;
     }
     .timestamp {
       font-weight: bold;
-      margin-bottom: 6px;
-      font-size: 22px;
+      margin-bottom: 8px;
+      font-size: 24px;
     }
     .line {
       display: flex;
-      gap: 12px;
+      gap: 14px;
       margin-bottom: 4px;
     }
     .label {
-      min-width: 80px;
+      min-width: 90px;
       font-weight: bold;
     }
-    #error, #loading {
+    #error {
       color: #ff6666;
-      font-size: 16px;
+      font-size: 18px;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
   <div id="container">
-    <div id="loading">Loading weather...</div>
+    <div class="timestamp" id="datetime"></div>
+    <div class="line"><span class="label">Temp:</span><span id="temp">Loading...</span></div>
+    <div class="line"><span class="label">Precip:</span><span id="precip">Loading...</span></div>
+    <div class="line"><span class="label">Hum:</span><span id="humidity">Loading...</span></div>
+    <div class="line"><span class="label">Wind:</span><span id="wind">Loading...</span></div>
     <div id="error"></div>
-    <div id="data" style="display:none;">
-      <div class="timestamp" id="datetime"></div>
-      <div class="line"><span class="label">Temp:</span><span id="temp"></span></div>
-      <div class="line"><span class="label">Precip:</span><span id="precip"></span></div>
-      <div class="line"><span class="label">Hum:</span><span id="humidity"></span></div>
-      <div class="line"><span class="label">Wind:</span><span id="wind"></span></div>
-    </div>
   </div>
 
   <script>
-    const REFRESH_MIN = 5;
-    let lat, lon;
-
     function updateDateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -75,15 +71,20 @@
     }
 
     async function getWeather() {
-      if (!lat || !lon) {
-        document.getElementById('error').innerText = 'Enable GPS.';
-        return;
-      }
+      document.getElementById('error').innerText = 'Trying IP location...';
       try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=\( {lat}&longitude= \){lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation_probability&hourly=precipitation_probability&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error();
-        const data = await res.json();
+        const ipRes = await fetch('https://ipwhois.app/json/');
+        if (!ipRes.ok) throw new Error('IP service error: ' + ipRes.status);
+        const ipData = await ipRes.json();
+        const lat = ipData.latitude;
+        const lon = ipData.longitude;
+        if (!lat || !lon) throw new Error('No lat/lon from IP: ' + JSON.stringify(ipData));
+
+        document.getElementById('error').innerText = 'Got location, fetching weather...';
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=\( {lat}&longitude= \){lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation_probability&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
+        const weatherRes = await fetch(weatherUrl);
+        if (!weatherRes.ok) throw new Error('Weather API error: ' + weatherRes.status);
+        const data = await weatherRes.json();
 
         const current = data.current;
         document.getElementById('temp').innerText = Math.round(current.temperature_2m) + '°F';
@@ -98,36 +99,16 @@
         }
         document.getElementById('precip').innerText = precip;
 
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('data').style.display = 'block';
         document.getElementById('error').innerText = '';
       } catch (e) {
-        document.getElementById('error').innerText = 'Weather failed.';
-      }
-    }
-
-    function getLocationAndStart() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            lat = pos.coords.latitude;
-            lon = pos.coords.longitude;
-            getWeather();
-            setInterval(getWeather, REFRESH_MIN * 60 * 1000);
-          },
-          () => {
-            document.getElementById('error').innerText = 'Location denied.';
-          },
-          { enableHighAccuracy: true, timeout: 8000 }
-        );
-      } else {
-        document.getElementById('error').innerText = 'No geolocation.';
+        document.getElementById('error').innerText = 'Failed: ' + e.message;
       }
     }
 
     setInterval(updateDateTime, 1000);
     updateDateTime();
-    getLocationAndStart();
+    getWeather();
+    setInterval(getWeather, 5 * 60 * 1000);
   </script>
 </body>
 </html>
