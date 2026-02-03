@@ -60,6 +60,7 @@
   </div>
 
   <script>
+    // Ticking time
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -74,20 +75,61 @@
     setInterval(updateTime, 1000);
     updateTime();
 
-    const moonDescriptions = {
-      '🌑': 'New Moon',
-      '🌒': 'Waxing Crescent',
-      '🌓': 'First Quarter',
-      '🌔': 'Waxing Gibbous',
-      '🌕': 'Full Moon',
-      '🌖': 'Waning Gibbous',
-      '🌗': 'Last Quarter',
-      '🌘': 'Waning Crescent'
-    };
+    // Accurate local moon phase calculation (no wttr.in dependency)
+    function getMoonPhase() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const day = now.getDate();
 
-    // Add cache bust to force fresh data from wttr.in
-    const cacheBust = Date.now();
-    fetch(`https://wttr.in/Rocklin?format="%c %t %h %w %P %m"&u&t=${cacheBust}`)
+      // Julian day calculation
+      let jd = 367 * year - Math.floor(7 * (year + Math.floor((month + 9) / 12)) / 4) + Math.floor(275 * month / 9) + day + 1721013.5;
+
+      // Moon age in days (0 = new moon)
+      let moonAge = (jd - 2451550.1) % 29.53058867;
+      if (moonAge < 0) moonAge += 29.53058867;
+
+      // Determine phase
+      let phase = moonAge / 29.53058867;
+      let emoji = '🌑';
+      let desc = 'New Moon';
+
+      if (phase < 0.03 || phase > 0.97) {
+        emoji = '🌑';
+        desc = 'New Moon';
+      } else if (phase < 0.22) {
+        emoji = '🌒';
+        desc = 'Waxing Crescent';
+      } else if (phase < 0.28) {
+        emoji = '🌓';
+        desc = 'First Quarter';
+      } else if (phase < 0.47) {
+        emoji = '🌔';
+        desc = 'Waxing Gibbous';
+      } else if (phase < 0.53) {
+        emoji = '🌕';
+        desc = 'Full Moon';
+      } else if (phase < 0.72) {
+        emoji = '🌖';
+        desc = 'Waning Gibbous';
+      } else if (phase < 0.78) {
+        emoji = '🌗';
+        desc = 'Last Quarter';
+      } else {
+        emoji = '🌘';
+        desc = 'Waning Crescent';
+      }
+
+      document.getElementById('moon-emoji').innerText = emoji;
+      document.getElementById('moon-desc').innerText = desc;
+    }
+
+    // Call moon phase immediately and every hour
+    getMoonPhase();
+    setInterval(getMoonPhase, 3600000);
+
+    // Weather fetch - same stable Rocklin version
+    fetch('https://wttr.in/Rocklin?format="%c %t %h %w"&u')
       .then(r => r.text())
       .then(text => {
         let cleaned = text.trim()
@@ -95,18 +137,10 @@
           .replace(/\s+/g, ' ')
           .replace(/^\+/, '')
           .replace(/\(.*?\)/g, '')
-          .replace(/hPa|Pa|mm|cm|km\/h|C|°C|Pa|1025|1025hPa|in\([^)]*\)/g, '')
-          .replace(/\d{4}/g, '') // remove any 4-digit pressure numbers
+          .replace(/hPa|Pa|mm|cm|km\/h|C|°C|Pa|1025|in\([^)]*\)/g, '')
           .trim();
 
-        const parts = cleaned.split(' ');
-        let moonEmoji = parts.pop() || '';
-        if (!/[🌑🌒🌓🌔🌕🌖🌗🌘]/.test(moonEmoji)) moonEmoji = '';
-        const weatherStr = parts.join(' ');
-
-        document.getElementById('weather').innerText = weatherStr || 'No weather data';
-        document.getElementById('moon-emoji').innerText = moonEmoji;
-        document.getElementById('moon-desc').innerText = moonDescriptions[moonEmoji] || '';
+        document.getElementById('weather').innerText = cleaned || 'No weather data';
       })
       .catch(() => {
         document.getElementById('weather').innerText = 'Weather load failed';
