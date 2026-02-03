@@ -35,7 +35,7 @@
       margin-top: 4px;
     }
     #moon-line {
-      margin-top: 4px;
+      margin-top: 6px;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -60,7 +60,7 @@
   </div>
 
   <script>
-    // Ticking time - fixed and clean
+    // Ticking time (MM/DD/YYYY HH:MM:SS)
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -69,13 +69,12 @@
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const seconds = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('datetime').innerText = month + '/' + day + '/' + year + ' ' + hours + ':' + minutes + ':' + seconds;
+      document.getElementById('datetime').innerText = `\( {month}/ \){day}/${year} \( {hours}: \){minutes}:${seconds}`;
     }
-
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Local moon phase (unchanged, works perfectly)
+    // Local moon phase (unchanged)
     function getMoonPhase() {
       const now = new Date();
       const year = now.getFullYear();
@@ -111,18 +110,19 @@
       document.getElementById('moon-emoji').innerText = emoji;
       document.getElementById('moon-desc').innerText = desc;
     }
-
     getMoonPhase();
     setInterval(getMoonPhase, 3600000); // hourly
 
-    // Weather from wttr.in - F, mph, NO location name shown
+    // Weather from wttr.in - F, mph, NO location name, NO mm (precip as % chance)
     fetch('https://wttr.in/?format="%c %t(%F) %h %w(mph) %p\n"&u')
       .then(r => r.text())
       .then(text => {
         let cleaned = text.trim()
           .replace(/"/g, '')
-          .replace(/\([^)]*\)/g, '')  // remove (F) unit note
+          .replace(/\([^)]*\)/g, '')  // remove (F) unit note if it appears
           .replace(/\s+/g, ' ')
+          .replace(/mm/g, '%')  // change any mm to % for precip chance
+          .replace(/Rocklin:/g, '')  // remove location name
           .trim();
 
         document.getElementById('weather').innerText = cleaned || 'No weather data';
