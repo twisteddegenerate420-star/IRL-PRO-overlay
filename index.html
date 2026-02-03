@@ -34,16 +34,39 @@
     #weather {
       margin-top: 4px;
     }
+    #moon-line {
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 26px;
+    }
+    #moon-emoji {
+      font-size: 36px;
+    }
+    #moon-desc {
+      font-size: 20px;
+    }
+    #holiday {
+      margin-top: 4px;
+      font-style: italic;
+      color: #00FF00;
+    }
   </style>
 </head>
 <body>
   <div id="container">
     <div class="timestamp" id="datetime">Loading time...</div>
     <div id="weather">Loading weather...</div>
+    <div id="moon-line">
+      <span id="moon-emoji"></span>
+      <span id="moon-desc"></span>
+    </div>
+    <div id="holiday"></div>
   </div>
 
   <script>
-    // Real ticking date/time (no placeholders)
+    // Your original ticking time - working perfectly
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -54,20 +77,82 @@
       const seconds = String(now.getSeconds()).padStart(2, '0');
       document.getElementById('datetime').innerText = month + '/' + day + '/' + year + ' ' + hours + ':' + minutes + ':' + seconds;
     }
-
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Weather from wttr.in - F, mph, no location name
-    fetch('https://wttr.in/Rocklin?format="%c %t(%F) %h %w(mph) %p\n"')
-      .then(r => r.text())
-      .then(text => {
-        let cleaned = text.trim().replace(/"/g, '').replace(/\([^)]*\)/g, '').replace(/km\/h/g, 'mph');
-        document.getElementById('weather').innerText = cleaned;
-      })
-      .catch(() => {
-        document.getElementById('weather').innerText = 'Weather load failed';
-      });
+    // Moon phase descriptions
+    const moonDescriptions = {
+      '🌑': 'New Moon',
+      '🌒': 'Waxing Crescent',
+      '🌓': 'First Quarter',
+      '🌔': 'Waxing Gibbous',
+      '🌕': 'Full Moon',
+      '🌖': 'Waning Gibbous',
+      '🌗': 'Last Quarter',
+      '🌘': 'Waning Crescent'
+    };
+
+    // Simple US holidays (no Juneteenth)
+    function getHolidayInfo() {
+      const now = new Date();
+      const m = now.getMonth();
+      const d = now.getDate();
+
+      if (m === 0 && d === 1) return "New Year's Day";
+      if (m === 6 && d === 4) return "Independence Day";
+      if (m === 11 && d === 25) return "Christmas Day";
+      // Add more if you want later
+      return null;
+    }
+
+    // Dynamic weather with geolocation
+    function fetchWeather(lat, lon) {
+      // ?u forces °F, mph, inches; %P = precip in inches; %m = moon
+      const url = `https://wttr.in/\( {lat}, \){lon}?format="%c %t %h %w %P %m"&u`;
+
+      fetch(url)
+        .then(r => r.text())
+        .then(text => {
+          let cleaned = text.trim()
+            .replace(/"/g, '')
+            .replace(/\s+/g, ' ')
+            .replace(/^\+/, '')
+            .replace(/mm|cm|km\/h|hPa|C|°C/g, '') // kill any metric
+            .replace(/in\([^)]*\)/g, '') // remove any fallback parens
+            .trim();
+
+          const parts = cleaned.split(' ');
+          let moonEmoji = parts.pop() || '';
+          if (!/[🌑🌒🌓🌔🌕🌖🌗🌘]/.test(moonEmoji)) moonEmoji = '';
+          const weatherStr = parts.join(' ');
+
+          document.getElementById('weather').innerText = weatherStr || 'No data';
+
+          document.getElementById('moon-emoji').innerText = moonEmoji;
+          document.getElementById('moon-desc').innerText = moonDescriptions[moonEmoji] || '';
+
+          const holiday = getHolidayInfo();
+          document.getElementById('holiday').innerText = holiday || '';
+        })
+        .catch(() => {
+          document.getElementById('weather').innerText = 'Weather failed';
+        });
+    }
+
+    function loadWeather() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => fetchWeather(pos.coords.latitude.toFixed(4), pos.coords.longitude.toFixed(4)),
+          () => document.getElementById('weather').innerText = 'Location denied - allow in settings',
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      } else {
+        document.getElementById('weather').innerText = 'No geolocation';
+      }
+    }
+
+    loadWeather();
+    setInterval(loadWeather, 600000); // 10 min
   </script>
 </body>
 </html>
