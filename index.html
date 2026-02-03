@@ -70,18 +70,19 @@
     }
 
     async function getWeather() {
-      document.getElementById('error').innerText = 'Fetching weather...';
+      document.getElementById('error').innerText = 'Loading weather from fallback location...';
       try {
-        // Hardcode Rocklin coords for reliable testing (change if needed)
+        // Hardcoded Rocklin, CA coords (change if needed for testing)
         const lat = 38.79;
         const lon = -121.24;
 
         const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=\( {lat}&longitude= \){lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation_probability&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
-        const weatherRes = await fetch(weatherUrl);
-        if (!weatherRes.ok) throw new Error('Weather API status: ' + weatherRes.status);
-        const data = await weatherRes.json();
+        const res = await fetch(weatherUrl);
+        if (!res.ok) throw new Error('Weather API status: ' + res.status);
 
+        const data = await res.json();
         const current = data.current;
+
         document.getElementById('temp').innerText = Math.round(current.temperature_2m) + '°F';
         document.getElementById('humidity').innerText = current.relative_humidity_2m + '%';
         document.getElementById('wind').innerText = Math.round(current.wind_speed_10m) + ' mph';
@@ -97,7 +98,7 @@
         document.getElementById('error').innerText = '';
       } catch (e) {
         document.getElementById('error').innerText = 'Failed: ' + e.message;
-        // Fallback values if fetch fails
+        // Fallback values so it doesn't stay "Loading..."
         document.getElementById('temp').innerText = 'N/A °F';
         document.getElementById('precip').innerText = 'N/A %';
         document.getElementById('humidity').innerText = 'N/A %';
@@ -105,8 +106,11 @@
       }
     }
 
+    // Start time ticking right away
     setInterval(updateDateTime, 1000);
     updateDateTime();
+
+    // Load weather once and refresh every 5 min
     getWeather();
     setInterval(getWeather, 5 * 60 * 1000);
   </script>
