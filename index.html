@@ -38,14 +38,11 @@
       margin-top: 4px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       font-size: 26px;
     }
     #moon-emoji {
       font-size: 36px;
-    }
-    #moon-desc {
-      font-size: 20px;
     }
     #holiday {
       margin-top: 4px;
@@ -66,7 +63,7 @@
   </div>
 
   <script>
-    // Ticking local time (MST right now)
+    // Ticking time - fixed, no placeholders
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -75,12 +72,12 @@
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const seconds = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('datetime').innerText = `\( {month}/ \){day}/${year} \( {hours}: \){minutes}:${seconds}`;
+      document.getElementById('datetime').innerText = month + '/' + day + '/' + year + ' ' + hours + ':' + minutes + ':' + seconds;
     }
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Moon phase descriptions
+    // Moon descriptions (matches wttr.in exact emojis)
     const moonDescriptions = {
       '🌑': 'New Moon',
       '🌒': 'Waxing Crescent',
@@ -92,7 +89,7 @@
       '🌘': 'Waning Crescent'
     };
 
-    // Holiday checker – NO Juneteenth, ever
+    // Holidays - NO Juneteenth ever
     function getHolidayInfo(date) {
       const month = date.getMonth();
       const day = date.getDate();
@@ -127,15 +124,12 @@
       return null;
     }
 
-    // Fetch weather – forced imperial units
+    // Fetch weather - forced °F/mph
     function fetchWeather(lat, lon) {
       const url = `https://wttr.in/\( {lat}, \){lon}?format=%c+%t+%h+%w+%p+%m&u`;
 
       fetch(url)
-        .then(r => {
-          if (!r.ok) throw new Error();
-          return r.text();
-        })
+        .then(r => r.text())
         .then(text => {
           let cleaned = text.trim()
             .replace(/"/g, '')
@@ -143,13 +137,19 @@
             .replace(/km\/h/g, 'mph')
             .trim();
 
-          // Pull moon emoji from end
-          const moonMatch = cleaned.match(/[🌑🌒🌓🌔🌕🌖🌗🌘]/);
-          const moonEmoji = moonMatch ? moonMatch[0] : '';
-          let weatherStr = cleaned.replace(moonEmoji, '').trim();
-
-          // Remove leading + from temp if present
-          weatherStr = weatherStr.replace(/^\+/, '').trim();
+          // Extract moon emoji (last token)
+          const parts = cleaned.split(' ');
+          let moonEmoji = '';
+          if (parts.length > 0) {
+            const last = parts.pop();
+            if (last.match(/[🌑🌒🌓🌔🌕🌖🌗🌘]/)) {
+              moonEmoji = last;
+            } else {
+              // fallback if not matched
+              moonEmoji = parts.pop() || '';
+            }
+          }
+          const weatherStr = parts.join(' ').replace(/^\+/, '').trim();
 
           document.getElementById('weather').innerText = weatherStr || 'No weather data';
 
@@ -161,7 +161,7 @@
           const holiday = getHolidayInfo(now);
           document.getElementById('holiday').innerText = holiday ? `${holiday.emoji} ${holiday.name}` : '';
         })
-        .catch(() => {
+        .catch(err => {
           document.getElementById('weather').innerText = 'Weather load failed';
         });
     }
@@ -175,7 +175,7 @@
             fetchWeather(lat, lon);
           },
           () => {
-            document.getElementById('weather').innerText = 'Location access denied';
+            document.getElementById('weather').innerText = 'Location denied - enable in browser settings';
           },
           { enableHighAccuracy: false, timeout: 15000, maximumAge: 120000 }
         );
