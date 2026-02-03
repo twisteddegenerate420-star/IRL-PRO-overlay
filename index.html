@@ -17,7 +17,7 @@
     }
     #container {
       position: absolute;
-      top: 10px;
+      bottom: 10px;
       left: 10px;
       padding: 6px 10px;
       background: transparent;
@@ -116,23 +116,45 @@
     setInterval(getMoonPhase, 3600000); // hourly
 
     // Weather from wttr.in - F, mph, NO location name, precip % chance only
-    fetch('https://wttr.in/?format="%c %t(%F) %h %w(mph) %p\n"&u')
-      .then(r => r.text())
-      .then(text => {
-        let cleaned = text.trim()
-          .replace(/"/g, '')
-          .replace(/\([^)]*\)/g, '')  // remove (F) note
-          .replace(/\s+/g, ' ')
-          .replace(/mm/g, '')  // remove any mm completely
-          .replace(/0.0/g, '0')  // simplify 0.0 to 0 for precip %
-          .replace(/Rocklin:/g, '')  // remove location name
-          .trim();
+    function fetchWeather(locationQuery) {
+      const url = `https://wttr.in/${locationQuery}?format="%c %t(%F) %h %w(mph) %p\n"&u`;
+      fetch(url)
+        .then(r => r.text())
+        .then(text => {
+          let cleaned = text.trim()
+            .replace(/"/g, '')
+            .replace(/\([^)]*\)/g, '')  // remove (F) note
+            .replace(/\s+/g, ' ')
+            .replace(/mm/g, '')  // remove any mm completely
+            .replace(/0.0/g, '0')  // simplify 0.0 to 0 for precip %
+            .replace(/Rocklin:/g, '')  // remove location name
+            .trim();
 
-        document.getElementById('weather').innerText = cleaned || 'No weather data';
-      })
-      .catch(() => {
-        document.getElementById('weather').innerText = 'Weather load failed';
-      });
+          document.getElementById('weather').innerText = cleaned || 'No weather data';
+        })
+        .catch(() => {
+          document.getElementById('weather').innerText = 'Weather load failed';
+        });
+    }
+
+    // Try to get GPS location, fall back to IP-based
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude.toFixed(4);
+          const lon = position.coords.longitude.toFixed(4);
+          fetchWeather(`${lat},${lon}`);
+        },
+        () => {
+          // Permission denied or error - fall back to IP location
+          fetchWeather('');
+        },
+        { timeout: 10000, enableHighAccuracy: true }
+      );
+    } else {
+      // Geolocation not supported - fall back to IP location
+      fetchWeather('');
+    }
   </script>
 </body>
 </html>
