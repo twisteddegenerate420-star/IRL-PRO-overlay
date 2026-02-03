@@ -115,7 +115,7 @@
     getMoonPhase();
     setInterval(getMoonPhase, 3600000);
 
-    // Dynamic weather with Visual Crossing API (using your key)
+    // Visual Crossing weather fetch with your key
     function fetchWeather(lat, lon) {
       const apiKey = 'U6XGP6ZT2FLWTPZ758RXGXBMW';
       const url = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/\( {lat}, \){lon}?unitGroup=us&key=${apiKey}&include=current&elements=temp,humidity,windspeed,precip,conditions`;
@@ -131,8 +131,11 @@
             const humidity = Math.round(data.currentConditions.humidity);
             const wind = Math.round(data.currentConditions.windspeed);
             const precip = data.currentConditions.precip ? data.currentConditions.precip.toFixed(2) : '0.00';
-            const conditions = data.currentConditions.conditions;
-            const icon = conditions.includes('Clear') || conditions.includes('Sunny') ? '☀' : conditions.includes('Cloud') ? '☁' : conditions.includes('Rain') ? '🌧️' : '❓';
+            const conditions = data.currentConditions.conditions.toLowerCase();
+            const icon = conditions.includes('clear') || conditions.includes('sunny') ? '☀' :
+                         conditions.includes('cloud') ? '☁' :
+                         conditions.includes('rain') || conditions.includes('shower') ? '🌧️' :
+                         conditions.includes('snow') ? '❄' : '❓';
 
             document.getElementById('weather').innerText = `${icon} ${temp}°F ${humidity}% ${wind}mph ${precip}in`;
           } else {
