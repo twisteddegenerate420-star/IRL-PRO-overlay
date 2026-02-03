@@ -126,8 +126,8 @@
     }
 
     function fetchWeather(lat, lon) {
-      // %P = precip inches, %i = pressure inHg, ?u force US, random param to bust cache
       const cacheBust = Date.now();
+      // %P inches precip, %i inHg pressure, ?u US units, cb cache bust
       const url = `https://wttr.in/\( {lat}, \){lon}?format="%c %t %h %w %P %i %m"&u&cb=${cacheBust}`;
 
       fetch(url)
@@ -137,7 +137,7 @@
             .replace(/"/g, '')
             .replace(/\s+/g, ' ')
             .replace(/^\+/, '')
-            .replace(/mm|cm|km\/h|hPa|C/g, '') // kill metric
+            .replace(/mm|cm|km\/h|hPa|C/g, '') // kill any metric
             .trim();
 
           const parts = cleaned.split(' ');
@@ -161,8 +161,8 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => fetchWeather(pos.coords.latitude.toFixed(4), pos.coords.longitude.toFixed(4)),
-          () => document.getElementById('weather').innerText = 'Location denied - allow in Chrome settings',
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 } // no cache for position
+          () => document.getElementById('weather').innerText = 'Location denied - check Chrome settings',
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 } // force fresh position
         );
       } else {
         document.getElementById('weather').innerText = 'Geolocation not supported';
@@ -170,7 +170,7 @@
     }
 
     loadWeather();
-    setInterval(loadWeather, 600000);
+    setInterval(loadWeather, 600000); // 10 min
   </script>
 </body>
 </html>
