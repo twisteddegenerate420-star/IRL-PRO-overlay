@@ -1,117 +1,53 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Truck Weather Overlay - Lime Green</title>
-  <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      background: transparent !important;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
-      color: #32CD32;
-      text-shadow: 0 0 4px black, 0 0 8px black;
-    }
-    #container {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      padding: 6px 10px;
-      background: transparent;
-      font-size: 22px;
-      line-height: 1.4;
-      pointer-events: none;
-      white-space: nowrap;
-    }
-    .timestamp {
-      font-weight: bold;
-      margin-bottom: 8px;
-      font-size: 24px;
-    }
-    #weather {
-      margin-top: 4px;
-    }
-    #moon-line {
-      margin-top: 4px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 26px;
-    }
-    #moon-emoji {
-      font-size: 36px;
-    }
-    #moon-desc {
-      font-size: 20px;
-    }
-  </style>
-</head>
-<body>
-  <div id="container">
-    <div class="timestamp" id="datetime">Loading time...</div>
-    <div id="weather">Loading weather...</div>
-    <div id="moon-line">
-      <span id="moon-emoji"></span>
-      <span id="moon-desc"></span>
-    </div>
-  </div>
+<script>
+  function updateTime() {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    document.getElementById('datetime').innerText = month + '/' + day + '/' + year + ' ' + hours + ':' + minutes + ':' + seconds;
+  }
 
-  <script>
-    // Your original ticking time - unchanged
-    function updateTime() {
-      const now = new Date();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const year = now.getFullYear();
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('datetime').innerText = month + '/' + day + '/' + year + ' ' + hours + ':' + minutes + ':' + seconds;
-    }
+  setInterval(updateTime, 1000);
+  updateTime();
 
-    setInterval(updateTime, 1000);
-    updateTime();
+  // Moon phase descriptions
+  const moonDescriptions = {
+    '🌑': 'New Moon',
+    '🌒': 'Waxing Crescent',
+    '🌓': 'First Quarter',
+    '🌔': 'Waxing Gibbous',
+    '🌕': 'Full Moon',
+    '🌖': 'Waning Gibbous',
+    '🌗': 'Last Quarter',
+    '🌘': 'Waning Crescent'
+  };
 
-    // Moon phase descriptions
-    const moonDescriptions = {
-      '🌑': 'New Moon',
-      '🌒': 'Waxing Crescent',
-      '🌓': 'First Quarter',
-      '🌔': 'Waxing Gibbous',
-      '🌕': 'Full Moon',
-      '🌖': 'Waning Gibbous',
-      '🌗': 'Last Quarter',
-      '🌘': 'Waning Crescent'
-    };
+  // Fetch with cache bust for fresh moon phase
+  const cacheBust = Date.now();
+  fetch(`https://wttr.in/Rocklin?format="%c %t %h %w %P %m"&u&t=${cacheBust}`)
+    .then(r => r.text())
+    .then(text => {
+      let cleaned = text.trim()
+        .replace(/"/g, '')
+        .replace(/\s+/g, ' ')
+        .replace(/^\+/, '')
+        .replace(/\(.*?\)/g, '')
+        .replace(/hPa|Pa|mm|cm|km\/h|C|°C|Pa|1025|in\([^)]*\)/g, '')
+        .trim();
 
-    // Fetch with moon (%m at end), ?u for °F/mph/inches
-    fetch('https://wttr.in/Rocklin?format="%c %t %h %w %P %m"&u')
-      .then(r => r.text())
-      .then(text => {
-        let cleaned = text.trim()
-          .replace(/"/g, '')
-          .replace(/\s+/g, ' ')
-          .replace(/^\+/, '')
-          .replace(/\(.*?\)/g, '') // remove any parens like (mph)
-          .replace(/hPa|Pa|mm|cm|km\/h|C|°C|Pa|1025|1025hPa|in\([^)]*\)/g, '') // aggressive pressure/metric removal
-          .replace(/\d{4}/g, '') // remove any 4-digit pressure numbers
-          .trim();
+      const parts = cleaned.split(' ');
+      let moonEmoji = parts.pop() || '';
+      if (!/[🌑🌒🌓🌔🌕🌖🌗🌘]/.test(moonEmoji)) moonEmoji = '';
+      const weatherStr = parts.join(' ');
 
-        const parts = cleaned.split(' ');
-        let moonEmoji = parts.pop() || '';
-        if (!/[🌑🌒🌓🌔🌕🌖🌗🌘]/.test(moonEmoji)) moonEmoji = '';
-        const weatherStr = parts.join(' ');
-
-        document.getElementById('weather').innerText = weatherStr || 'No weather data';
-        document.getElementById('moon-emoji').innerText = moonEmoji;
-        document.getElementById('moon-desc').innerText = moonDescriptions[moonEmoji] || '';
-      })
-      .catch(() => {
-        document.getElementById('weather').innerText = 'Weather load failed';
-      });
-  </script>
-</body>
-</html>
+      document.getElementById('weather').innerText = weatherStr || 'No weather data';
+      document.getElementById('moon-emoji').innerText = moonEmoji;
+      document.getElementById('moon-desc').innerText = moonDescriptions[moonEmoji] || '';
+    })
+    .catch(() => {
+      document.getElementById('weather').innerText = 'Weather load failed';
+    });
+</script>
