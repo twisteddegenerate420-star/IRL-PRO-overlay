@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -71,19 +70,20 @@
     }
 
     async function getWeather() {
-      document.getElementById('error').innerText = 'Trying IP location...';
+      document.getElementById('error').innerText = 'Trying to get location...';
       try {
+        // Reliable IP geolocation
         const ipRes = await fetch('https://ipwhois.app/json/');
-        if (!ipRes.ok) throw new Error('IP service error: ' + ipRes.status);
+        if (!ipRes.ok) throw new Error('IP service failed with status ' + ipRes.status);
         const ipData = await ipRes.json();
         const lat = ipData.latitude;
         const lon = ipData.longitude;
-        if (!lat || !lon) throw new Error('No lat/lon from IP: ' + JSON.stringify(ipData));
+        if (!lat || !lon) throw new Error('No lat/lon returned from IP: ' + JSON.stringify(ipData));
 
-        document.getElementById('error').innerText = 'Got location, fetching weather...';
+        document.getElementById('error').innerText = 'Fetching weather...';
         const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=\( {lat}&longitude= \){lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation_probability&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
         const weatherRes = await fetch(weatherUrl);
-        if (!weatherRes.ok) throw new Error('Weather API error: ' + weatherRes.status);
+        if (!weatherRes.ok) throw new Error('Weather API failed with status ' + weatherRes.status);
         const data = await weatherRes.json();
 
         const current = data.current;
