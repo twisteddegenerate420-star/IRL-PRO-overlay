@@ -31,88 +31,47 @@
       margin-bottom: 8px;
       font-size: 24px;
     }
-    .line {
-      display: flex;
-      gap: 14px;
-      margin-bottom: 4px;
-    }
-    .label {
-      min-width: 90px;
-      font-weight: bold;
+    #weather {
+      margin-top: 4px;
     }
     #error {
       color: #ff6666;
       font-size: 18px;
-      margin-top: 10px;
     }
   </style>
 </head>
 <body>
   <div id="container">
     <div class="timestamp" id="datetime"></div>
-    <div class="line"><span class="label">Temp:</span><span id="temp">Loading...</span></div>
-    <div class="line"><span class="label">Precip:</span><span id="precip">Loading...</span></div>
-    <div class="line"><span class="label">Hum:</span><span id="humidity">Loading...</span></div>
-    <div class="line"><span class="label">Wind:</span><span id="wind">Loading...</span></div>
+    <div id="weather">Loading weather...</div>
     <div id="error"></div>
   </div>
 
   <script>
-    function updateDateTime() {
+    function updateTime() {
       const now = new Date();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const year = now.getFullYear();
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('datetime').innerText = `\( {month}/ \){day}/${year} \( {hours}: \){minutes}:${seconds}`;
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const y = now.getFullYear();
+      const h = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('datetime').innerText = `\( {m}/ \){d}/${y} \( {h}: \){min}:${s}`;
     }
+    setInterval(updateTime, 1000);
+    updateTime();
 
-    async function getWeather() {
-      document.getElementById('error').innerText = 'Loading weather from fallback location...';
-      try {
-        // Hardcoded Rocklin, CA coords (change if needed for testing)
-        const lat = 38.79;
-        const lon = -121.24;
-
-        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=\( {lat}&longitude= \){lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation_probability&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
-        const res = await fetch(weatherUrl);
-        if (!res.ok) throw new Error('Weather API status: ' + res.status);
-
-        const data = await res.json();
-        const current = data.current;
-
-        document.getElementById('temp').innerText = Math.round(current.temperature_2m) + '°F';
-        document.getElementById('humidity').innerText = current.relative_humidity_2m + '%';
-        document.getElementById('wind').innerText = Math.round(current.wind_speed_10m) + ' mph';
-
-        let precip = '0%';
-        if (current.precipitation_probability != null) {
-          precip = current.precipitation_probability + '%';
-        } else if (data.hourly?.precipitation_probability?.length > 0) {
-          precip = Math.round(data.hourly.precipitation_probability[0]) + '%';
-        }
-        document.getElementById('precip').innerText = precip;
-
+    // Load weather from wttr.in for Rocklin (change city if needed for testing)
+    fetch('https://wttr.in/Rocklin?format="%l: %c (%C) %t %h %w %p"')
+      .then(r => r.text())
+      .then(text => {
+        document.getElementById('weather').innerText = text.trim();
         document.getElementById('error').innerText = '';
-      } catch (e) {
-        document.getElementById('error').innerText = 'Failed: ' + e.message;
-        // Fallback values so it doesn't stay "Loading..."
-        document.getElementById('temp').innerText = 'N/A °F';
-        document.getElementById('precip').innerText = 'N/A %';
-        document.getElementById('humidity').innerText = 'N/A %';
-        document.getElementById('wind').innerText = 'N/A mph';
-      }
-    }
-
-    // Start time ticking right away
-    setInterval(updateDateTime, 1000);
-    updateDateTime();
-
-    // Load weather once and refresh every 5 min
-    getWeather();
-    setInterval(getWeather, 5 * 60 * 1000);
+      })
+      .catch(e => {
+        document.getElementById('error').innerText = 'Weather load failed';
+        document.getElementById('weather').innerText = 'N/A';
+      });
   </script>
 </body>
 </html>
