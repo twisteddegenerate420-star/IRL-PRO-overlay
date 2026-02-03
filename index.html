@@ -34,16 +34,27 @@
     #weather {
       margin-top: 4px;
     }
+    #moon {
+      margin-top: 4px;
+      font-size: 28px; /* bigger emoji for visibility */
+    }
+    #holiday {
+      margin-top: 4px;
+      font-style: italic;
+      color: #00FF00; /* brighter green */
+    }
   </style>
 </head>
 <body>
   <div id="container">
     <div class="timestamp" id="datetime">Loading time...</div>
     <div id="weather">Loading weather...</div>
+    <div id="moon">Loading moon...</div>
+    <div id="holiday"></div>
   </div>
 
   <script>
-    // Fixed ticking local time (uses device's timezone)
+    // Ticking local date/time (device timezone, e.g. MST)
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -58,9 +69,50 @@
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Fetch weather - clean format, force US units
+    // US federal holidays checker (excluding Juneteenth as requested)
+    function getHolidayName(date) {
+      const month = date.getMonth(); // 0=Jan, 11=Dec
+      const day = date.getDate();
+      const year = date.getFullYear();
+
+      // Helper: find nth weekday of the month (e.g. 3rd Monday: n=3, weekday=1)
+      // For last: use large n like 5, it will cap at actual last
+      function nthWeekday(n, targetWeekday, m) {
+        let d = new Date(year, m, 1);
+        let count = 0;
+        while (d.getMonth() === m) {
+          if (d.getDay() === targetWeekday) {
+            count++;
+            if (count === n) return d.getDate();
+          }
+          d.setDate(d.getDate() + 1);
+        }
+        // For "last" (n= -1 or large), return the last one found
+        if (n < 0 || n > 5) return d.getDate() - 1; // last before overflow
+        return null;
+      }
+
+      // Fixed dates
+      if (month === 0 && day === 1) return "New Year's Day";
+      if (month === 6 && day === 4) return "Independence Day";
+      if (month === 10 && day === 11) return "Veterans Day";
+      if (month === 11 && day === 25) return "Christmas Day";
+
+      // Variable
+      if (month === 0 && day === nthWeekday(3, 1, 0)) return "Martin Luther King Jr. Day"; // 3rd Mon Jan
+      if (month === 1 && day === nthWeekday(3, 1, 1)) return "Presidents' Day"; // 3rd Mon Feb
+      if (month === 4 && day === nthWeekday(5, 1, 4)) return "Memorial Day"; // last Mon May (use 5 to get last)
+      if (month === 8 && day === nthWeekday(1, 1, 8)) return "Labor Day"; // 1st Mon Sep
+      if (month === 9 && day === nthWeekday(2, 1, 9)) return "Columbus Day"; // 2nd Mon Oct
+      if (month === 10 && day === nthWeekday(4, 4, 10)) return "Thanksgiving Day"; // 4th Thu Nov
+
+      return null;
+    }
+
+    // Fetch weather + moon phase
     function fetchWeather(lat, lon) {
-      const url = `https://wttr.in/\( {lat}, \){lon}?format=" %c %t %h %w %p "&u`;
+      // Format: condition temp humidity wind precip moon
+      const url = `https://wttr.in/\( {lat}, \){lon}?format=" %c %t %h %w %p %m "&u`;
 
       fetch(url)
         .then(r => {
@@ -70,15 +122,28 @@
         .then(text => {
           let cleaned = text.trim()
             .replace(/"/g, '')
-            .replace(/\s+/g, ' ')     // normalize spaces
-            .replace(/km\/h/g, 'mph') // fallback
+            .replace(/\s+/g, ' ')
+            .replace(/km\/h/g, 'mph')
             .trim();
 
-          document.getElementById('weather').innerText = cleaned || 'No data';
+          // Split to separate weather and moon (last token is moon emoji)
+          const parts = cleaned.split(' ');
+          const moon = parts.pop(); // moon phase emoji
+          const weatherStr = parts.join(' ');
+
+          document.getElementById('weather').innerText = weatherStr || 'No weather data';
+          document.getElementById('moon').innerText = moon || 'No moon phase';
+
+          // Holiday check
+          const now = new Date();
+          const holiday = getHolidayName(now);
+          document.getElementById('holiday').innerText = holiday ? `🎉 ${holiday}` : '';
         })
         .catch(err => {
           console.error(err);
           document.getElementById('weather').innerText = 'Weather failed';
+          document.getElementById('moon').innerText = '';
+          document.getElementById('holiday').innerText = '';
         });
     }
 
