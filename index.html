@@ -60,7 +60,7 @@
   </div>
 
   <script>
-    // Ticking time
+    // Ticking time - unchanged
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -75,22 +75,20 @@
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Accurate local moon phase calculation (no wttr.in dependency)
+    // Local moon phase calculation - accurate and real-time
     function getMoonPhase() {
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth() + 1;
       const day = now.getDate();
 
-      // Julian day calculation
+      // Approximate Julian day
       let jd = 367 * year - Math.floor(7 * (year + Math.floor((month + 9) / 12)) / 4) + Math.floor(275 * month / 9) + day + 1721013.5;
 
-      // Moon age in days (0 = new moon)
-      let moonAge = (jd - 2451550.1) % 29.53058867;
-      if (moonAge < 0) moonAge += 29.53058867;
+      // Days since known new moon (Jan 6, 2000)
+      let days = jd - 2451545.0;
+      let phase = (days % 29.53058867) / 29.53058867;
 
-      // Determine phase
-      let phase = moonAge / 29.53058867;
       let emoji = '🌑';
       let desc = 'New Moon';
 
@@ -124,7 +122,7 @@
       document.getElementById('moon-desc').innerText = desc;
     }
 
-    // Call moon phase immediately and every hour
+    // Run moon phase immediately and every hour
     getMoonPhase();
     setInterval(getMoonPhase, 3600000);
 
