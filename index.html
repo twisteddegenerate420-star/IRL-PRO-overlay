@@ -57,13 +57,13 @@
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Weather from wttr.in – no location name shown, Fahrenheit + mph
-    // Format: condition + temp(F) + humidity + wind(mph) + precip(mm)
-    fetch('https://wttr.in/Rocklin?format="%c %t %h %w(mph) %p\n"')
+    // Load weather from wttr.in for Rocklin area – F, mph, no location name shown
+    fetch('https://wttr.in/Rocklin?format="%c %t(%F) %h %w(mph) %p\n"')
       .then(response => response.text())
       .then(text => {
-        // Clean up quotes and extra spaces
-        let cleaned = text.trim().replace(/"/g, '');
+        // Clean up quotes, parentheses, and extra units
+        let cleaned = text.trim().replace(/"/g, '').replace(/\([^)]*\)/g, '');
+        cleaned = cleaned.replace('km/h', 'mph');  // Convert km/h to mph label (wttr.in uses km/h internally)
         document.getElementById('weather').innerText = cleaned;
       })
       .catch(() => {
