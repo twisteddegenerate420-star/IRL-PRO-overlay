@@ -60,7 +60,7 @@
   </div>
 
   <script>
-    // Ticking time - unchanged
+    // Ticking time
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -75,7 +75,7 @@
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Local moon phase calculation - accurate and real-time
+    // Local moon phase calculation
     function getMoonPhase() {
       const now = new Date();
       const year = now.getFullYear();
@@ -113,26 +113,33 @@
     }
 
     getMoonPhase();
-    setInterval(getMoonPhase, 3600000); // hourly update
+    setInterval(getMoonPhase, 3600000);
 
-    // Dynamic weather with geolocation
+    // Dynamic weather with Visual Crossing API (using your key)
     function fetchWeather(lat, lon) {
-      const url = `https://wttr.in/\( {lat}, \){lon}?format="%c %t %h %w"&u`;
+      const apiKey = 'U6XGP6ZT2FLWTPZ758RXGXBMW';
+      const url = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/\( {lat}, \){lon}?unitGroup=us&key=${apiKey}&include=current&elements=temp,humidity,windspeed,precip,conditions`;
 
       fetch(url)
-        .then(r => r.text())
-        .then(text => {
-          let cleaned = text.trim()
-            .replace(/"/g, '')
-            .replace(/\s+/g, ' ')
-            .replace(/^\+/, '')
-            .replace(/\(.*?\)/g, '')
-            .replace(/hPa|Pa|mm|cm|km\/h|C|°C|Pa|1025|in\([^)]*\)/g, '')
-            .trim();
-
-          document.getElementById('weather').innerText = cleaned || 'No weather data';
+        .then(r => {
+          if (!r.ok) throw new Error(`API error: ${r.status}`);
+          return r.json();
         })
-        .catch(() => {
+        .then(data => {
+          if (data.currentConditions) {
+            const temp = Math.round(data.currentConditions.temp);
+            const humidity = Math.round(data.currentConditions.humidity);
+            const wind = Math.round(data.currentConditions.windspeed);
+            const precip = data.currentConditions.precip ? data.currentConditions.precip.toFixed(2) : '0.00';
+            const conditions = data.currentConditions.conditions;
+            const icon = conditions.includes('Clear') || conditions.includes('Sunny') ? '☀' : conditions.includes('Cloud') ? '☁' : conditions.includes('Rain') ? '🌧️' : '❓';
+
+            document.getElementById('weather').innerText = `${icon} ${temp}°F ${humidity}% ${wind}mph ${precip}in`;
+          } else {
+            document.getElementById('weather').innerText = 'No current data';
+          }
+        })
+        .catch(err => {
           document.getElementById('weather').innerText = 'Weather load failed';
         });
     }
@@ -141,8 +148,8 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => {
-            const lat = pos.coords.latitude.toFixed(4);
-            const lon = pos.coords.longitude.toFixed(4);
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
             fetchWeather(lat, lon);
           },
           () => {
