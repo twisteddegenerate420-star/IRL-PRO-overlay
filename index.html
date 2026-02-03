@@ -34,43 +34,38 @@
     #weather {
       margin-top: 4px;
     }
-    #error {
-      color: #ff6666;
-      font-size: 18px;
-    }
   </style>
 </head>
 <body>
   <div id="container">
-    <div class="timestamp" id="datetime"></div>
+    <div class="timestamp" id="datetime">Loading time...</div>
     <div id="weather">Loading weather...</div>
-    <div id="error"></div>
   </div>
 
   <script>
     function updateTime() {
       const now = new Date();
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      const d = String(now.getDate()).padStart(2, '0');
-      const y = now.getFullYear();
-      const h = String(now.getHours()).padStart(2, '0');
-      const min = String(now.getMinutes()).padStart(2, '0');
-      const s = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('datetime').innerText = `\( {m}/ \){d}/${y} \( {h}: \){min}:${s}`;
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const year = now.getFullYear();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('datetime').innerText = `\( {month}/ \){day}/${year} \( {hours}: \){minutes}:${seconds}`;
     }
+
+    // Start time ticking immediately
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Load weather from wttr.in for Rocklin (change city if needed for testing)
+    // Load weather from wttr.in for Rocklin (change city if you want dynamic, but this is stable)
     fetch('https://wttr.in/Rocklin?format="%l: %c (%C) %t %h %w %p"')
-      .then(r => r.text())
+      .then(response => response.text())
       .then(text => {
-        document.getElementById('weather').innerText = text.trim();
-        document.getElementById('error').innerText = '';
+        document.getElementById('weather').innerText = text.trim().replace(/"/g, '');
       })
-      .catch(e => {
-        document.getElementById('error').innerText = 'Weather load failed';
-        document.getElementById('weather').innerText = 'N/A';
+      .catch(() => {
+        document.getElementById('weather').innerText = 'Weather load failed';
       });
   </script>
 </body>
