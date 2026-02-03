@@ -35,7 +35,7 @@
       margin-top: 4px;
     }
     #moon-line {
-      margin-top: 6px;
+      margin-top: 4px;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -60,7 +60,7 @@
   </div>
 
   <script>
-    // Real ticking time (MM/DD/YYYY HH:MM:SS) - working in your last screenshot
+    // FIXED ticking time - no curly braces around variables
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -71,10 +71,11 @@
       const seconds = String(now.getSeconds()).padStart(2, '0');
       document.getElementById('datetime').innerText = month + '/' + day + '/' + year + ' ' + hours + ':' + minutes + ':' + seconds;
     }
+
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Local moon phase (unchanged, working fine)
+    // Local moon phase (unchanged from your working version)
     function getMoonPhase() {
       const now = new Date();
       const year = now.getFullYear();
@@ -110,20 +111,18 @@
       document.getElementById('moon-emoji').innerText = emoji;
       document.getElementById('moon-desc').innerText = desc;
     }
+
     getMoonPhase();
     setInterval(getMoonPhase, 3600000); // hourly
 
-    // Weather from wttr.in - F, mph, NO location name, precip as % chance only (no mm)
+    // Weather from wttr.in - F, mph, NO location name (your working base)
     fetch('https://wttr.in/?format="%c %t(%F) %h %w(mph) %p\n"&u')
       .then(r => r.text())
       .then(text => {
         let cleaned = text.trim()
           .replace(/"/g, '')
-          .replace(/\([^)]*\)/g, '')  // remove any (F) note
+          .replace(/\([^)]*\)/g, '')  // remove (F) note
           .replace(/\s+/g, ' ')
-          .replace(/mm/g, '')  // strip any mm completely
-          .replace(/Rocklin:/g, '')  // remove location name
-          .replace(/0.0/g, '0')  // simplify 0.0 to 0 for precip %
           .trim();
 
         document.getElementById('weather').innerText = cleaned || 'No weather data';
