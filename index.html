@@ -43,6 +43,7 @@
   </div>
 
   <script>
+    // Real date/time with ticking seconds
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -53,17 +54,14 @@
       const seconds = String(now.getSeconds()).padStart(2, '0');
       document.getElementById('datetime').innerText = `\( {month}/ \){day}/${year} \( {hours}: \){minutes}:${seconds}`;
     }
-
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Load weather from wttr.in for Rocklin area – F, mph, no location name shown
+    // Weather from wttr.in – °F, mph, no location name, condition icon
     fetch('https://wttr.in/Rocklin?format="%c %t(%F) %h %w(mph) %p\n"')
-      .then(response => response.text())
+      .then(r => r.text())
       .then(text => {
-        // Clean up quotes, parentheses, and extra units
-        let cleaned = text.trim().replace(/"/g, '').replace(/\([^)]*\)/g, '');
-        cleaned = cleaned.replace('km/h', 'mph');  // Convert km/h to mph label (wttr.in uses km/h internally)
+        let cleaned = text.trim().replace(/"/g, '').replace(/\([^)]*\)/g, '').replace(/km\/h/g, 'mph');
         document.getElementById('weather').innerText = cleaned;
       })
       .catch(() => {
