@@ -96,7 +96,8 @@
           .replace(/\s+/g, ' ')
           .replace(/^\+/, '')
           .replace(/\(.*?\)/g, '') // remove any parens like (mph)
-          .replace(/hPa|Pa|mm|cm|km\/h|C|°C|1025|in\([^)]*\)/g, '') // remove pressure, metric, extras
+          .replace(/hPa|Pa|mm|cm|km\/h|C|°C|Pa|1025|1025hPa|in\([^)]*\)/g, '') // aggressive pressure/metric removal
+          .replace(/\d{4}/g, '') // remove any 4-digit pressure numbers
           .trim();
 
         const parts = cleaned.split(' ');
