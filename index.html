@@ -66,6 +66,7 @@
   </div>
 
   <script>
+    // Ticking time (your original, never broken)
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -127,8 +128,7 @@
 
     function fetchWeather(lat, lon) {
       const cacheBust = Date.now();
-      // No pressure, %P for inches precip, ?u US units, cb to bust cache
-      const url = `https://wttr.in/\( {lat}, \){lon}?format="%c %t %h %w %P %m"&u&cb=${cacheBust}`;
+      const url = `https://wttr.in/\( {lat}, \){lon}?format="%c %t %h %w %P %m"&u&t=${cacheBust}`;
 
       fetch(url)
         .then(r => r.text())
@@ -137,8 +137,8 @@
             .replace(/"/g, '')
             .replace(/\s+/g, ' ')
             .replace(/^\+/, '')
-            .replace(/mm|cm|km\/h|hPa|C|inHg|Pa/g, '')  // kill any leftover metric/pressure
-            .replace(/  +/g, ' ')  // collapse extra spaces
+            .replace(/mm|cm|km\/h|hPa|C|inHg|Pa|1012|1113/g, '') // nuke all known junk
+            .replace(/  +/g, ' ')
             .trim();
 
           const parts = cleaned.split(' ');
@@ -153,7 +153,8 @@
           const holiday = getHolidayInfo();
           document.getElementById('holiday').innerText = holiday ? `${holiday.emoji} ${holiday.name}` : '';
         })
-        .catch(() => {
+        .catch(err => {
+          console.log('Fetch error:', err);
           document.getElementById('weather').innerText = 'Weather load failed';
         });
     }
@@ -162,8 +163,11 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => fetchWeather(pos.coords.latitude.toFixed(4), pos.coords.longitude.toFixed(4)),
-          () => document.getElementById('weather').innerText = 'Location denied - allow in Chrome settings',
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+          err => {
+            console.log('Geo error:', err);
+            document.getElementById('weather').innerText = 'Location denied - check Chrome settings';
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
       } else {
         document.getElementById('weather').innerText = 'Geolocation not supported';
@@ -171,7 +175,7 @@
     }
 
     loadWeather();
-    setInterval(loadWeather, 600000);
+    setInterval(loadWeather, 300000); // 5 min refresh for driving
   </script>
 </body>
 </html>
