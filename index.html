@@ -132,23 +132,29 @@
         .catch(() => callback(''));
     }
 
-    function fetchWeather(lat, lon) {
+    function fetchWeather() {
+      // Hardcoded Bakersfield for reliable test - remove or replace with geolocation later
+      const lat = 35.3733;
+      const lon = -119.0187;
+
       const url = `https://api.open-meteo.com/v1/forecast?latitude=\( {lat}&longitude= \){lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
 
       fetch(url)
-        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) throw new Error('API response not OK: ' + r.status);
+          return r.json();
+        })
         .then(data => {
           if (data.current) {
             const temp = Math.round(data.current.temperature_2m);
             const humidity = data.current.relative_humidity_2m;
             const wind = Math.round(data.current.wind_speed_10m);
             const precip = data.current.precipitation.toFixed(2);
-            const condition = temp > 70 ? '☀' : temp > 50 ? '⛅' : '☁';
+            const condition = temp > 70 ? '☀' : temp > 50 ? '⛅' : temp > 32 ? '☁' : '❄';
 
-            const weatherStr = `${condition} ${temp}°F ${humidity}% ${wind}mph ${precip}in`;
-            document.getElementById('weather').innerText = weatherStr;
+            document.getElementById('weather').innerText = `${condition} ${temp}°F ${humidity}% ${wind}mph ${precip}in`;
           } else {
-            document.getElementById('weather').innerText = 'Weather data error';
+            document.getElementById('weather').innerText = 'No current data from API';
           }
 
           fetchMoon(lat, lon, moonEmoji => {
@@ -160,28 +166,12 @@
           document.getElementById('holiday').innerText = holiday ? `${holiday.emoji} ${holiday.name}` : '';
         })
         .catch(err => {
-          console.log('Weather error:', err);
-          document.getElementById('weather').innerText = 'Weather load failed (check network)';
+          document.getElementById('weather').innerText = 'Weather load failed: ' + err.message;
         });
     }
 
-    function loadWeather() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          pos => fetchWeather(pos.coords.latitude, pos.coords.longitude),
-          err => {
-            console.log('Geo error:', err.message);
-            document.getElementById('weather').innerText = 'Location denied - allow in Chrome';
-          },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-      } else {
-        document.getElementById('weather').innerText = 'Geolocation not supported';
-      }
-    }
-
-    loadWeather();
-    setInterval(loadWeather, 300000); // 5 min
+    fetchWeather();
+    setInterval(fetchWeather, 300000); // 5 min refresh
   </script>
 </body>
 </html>
