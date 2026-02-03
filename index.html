@@ -43,7 +43,7 @@
   </div>
 
   <script>
-    // Real date/time with ticking seconds
+    // Real ticking date/time (no placeholders)
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -52,12 +52,13 @@
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const seconds = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('datetime').innerText = `\( {month}/ \){day}/${year} \( {hours}: \){minutes}:${seconds}`;
+      document.getElementById('datetime').innerText = month + '/' + day + '/' + year + ' ' + hours + ':' + minutes + ':' + seconds;
     }
+
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Weather from wttr.in – °F, mph, no location name, condition icon
+    // Weather from wttr.in - F, mph, no location name
     fetch('https://wttr.in/Rocklin?format="%c %t(%F) %h %w(mph) %p\n"')
       .then(r => r.text())
       .then(text => {
