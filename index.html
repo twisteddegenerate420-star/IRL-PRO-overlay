@@ -43,6 +43,7 @@
   </div>
 
   <script>
+    // Your original ticking time - unchanged
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -57,7 +58,7 @@
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Fixed format: condition temp humidity wind precip_inches
+    // Forced °F, mph, inches precip - no metric, no extras
     fetch('https://wttr.in/Rocklin?format="%c %t %h %w %P"&u')
       .then(r => r.text())
       .then(text => {
@@ -66,7 +67,7 @@
           .replace(/\s+/g, ' ')
           .replace(/^\+/, '')
           .replace(/\(.*?\)/g, '') // remove any (mph) or parens
-          .replace(/hPa|Pa|mm|km\/h|C|°C/g, '') // kill metric/pressure
+          .replace(/hPa|Pa|mm|cm|km\/h|C|°C|in\([^)]*\)/g, '') // kill metric/pressure
           .trim();
 
         document.getElementById('weather').innerText = cleaned || 'No weather data';
