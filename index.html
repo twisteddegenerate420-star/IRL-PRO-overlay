@@ -34,32 +34,16 @@
     #weather {
       margin-top: 4px;
     }
-    #moon-line {
-      margin-top: 4px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 26px;
-    }
-    #moon-emoji {
-      font-size: 36px;
-    }
-    #moon-desc {
-      font-size: 20px;
-    }
   </style>
 </head>
 <body>
   <div id="container">
     <div class="timestamp" id="datetime">Loading time...</div>
     <div id="weather">Loading weather...</div>
-    <div id="moon-line">
-      <span id="moon-emoji"></span>
-      <span id="moon-desc"></span>
-    </div>
   </div>
 
   <script>
+    // Your original ticking time - unchanged
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -70,39 +54,24 @@
       const seconds = String(now.getSeconds()).padStart(2, '0');
       document.getElementById('datetime').innerText = month + '/' + day + '/' + year + ' ' + hours + ':' + minutes + ':' + seconds;
     }
+
     setInterval(updateTime, 1000);
     updateTime();
 
-    const moonDescriptions = {
-      '🌑': 'New Moon',
-      '🌒': 'Waxing Crescent',
-      '🌓': 'First Quarter',
-      '🌔': 'Waxing Gibbous',
-      '🌕': 'Full Moon',
-      '🌖': 'Waning Gibbous',
-      '🌗': 'Last Quarter',
-      '🌘': 'Waning Crescent'
-    };
-
-    fetch('https://wttr.in/Rocklin?format="%c %t %h %w(mph) %P %m"&u')
+    // Fixed format: condition temp humidity wind precip_inches
+    // ?u forces °F, mph, inches; %P = precip in inches
+    fetch('https://wttr.in/Rocklin?format="%c %t %h %w %P"&u')
       .then(r => r.text())
       .then(text => {
         let cleaned = text.trim()
           .replace(/"/g, '')
           .replace(/\s+/g, ' ')
           .replace(/^\+/, '')
-          .replace(/\(.*?\)/g, '') // remove parens
-          .replace(/mm|cm|km\/h|hPa|C|°C|Pa/g, '') // kill metric/pressure
+          .replace(/\(.*?\)/g, '') // remove any (mph) or parens
+          .replace(/hPa|Pa|mm|cm|km\/h|C|°C|1025|in\([^)]*\)/g, '') // kill pressure/metric
           .trim();
 
-        const parts = cleaned.split(' ');
-        let moonEmoji = parts.pop() || '';
-        if (!/[🌑-🌘]/.test(moonEmoji)) moonEmoji = '';
-        const weatherStr = parts.join(' ');
-
-        document.getElementById('weather').innerText = weatherStr || 'No data';
-        document.getElementById('moon-emoji').innerText = moonEmoji;
-        document.getElementById('moon-desc').innerText = moonDescriptions[moonEmoji] || '';
+        document.getElementById('weather').innerText = cleaned || 'No weather data';
       })
       .catch(() => {
         document.getElementById('weather').innerText = 'Weather load failed';
