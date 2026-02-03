@@ -34,38 +34,16 @@
     #weather {
       margin-top: 4px;
     }
-    #moon-line {
-      margin-top: 4px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 26px;
-    }
-    #moon-emoji {
-      font-size: 36px;
-    }
-    #moon-desc {
-      font-size: 20px;
-    }
-    #holiday {
-      margin-top: 4px;
-      font-style: italic;
-      color: #00FF00;
-    }
   </style>
 </head>
 <body>
   <div id="container">
     <div class="timestamp" id="datetime">Loading time...</div>
     <div id="weather">Loading weather...</div>
-    <div id="moon-line">
-      <span id="moon-emoji"></span>
-      <span id="moon-desc"></span>
-    </div>
-    <div id="holiday"></div>
   </div>
 
   <script>
+    // Real ticking date/time (no placeholders)
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -76,102 +54,20 @@
       const seconds = String(now.getSeconds()).padStart(2, '0');
       document.getElementById('datetime').innerText = month + '/' + day + '/' + year + ' ' + hours + ':' + minutes + ':' + seconds;
     }
+
     setInterval(updateTime, 1000);
     updateTime();
 
-    const moonDescriptions = {
-      '🌑': 'New Moon',
-      '🌒': 'Waxing Crescent',
-      '🌓': 'First Quarter',
-      '🌔': 'Waxing Gibbous',
-      '🌕': 'Full Moon',
-      '🌖': 'Waning Gibbous',
-      '🌗': 'Last Quarter',
-      '🌘': 'Waning Crescent'
-    };
-
-    function getHolidayInfo() {
-      const now = new Date();
-      const m = now.getMonth();
-      const d = now.getDate();
-      const y = now.getFullYear();
-
-      function nthWeekday(n, wd, mo) {
-        let date = new Date(y, mo, 1);
-        let count = 0;
-        let last = null;
-        while (date.getMonth() === mo) {
-          if (date.getDay() === wd) {
-            count++;
-            last = date.getDate();
-            if (count === n) return last;
-          }
-          date.setDate(date.getDate() + 1);
-        }
-        return n > 4 ? last : null;
-      }
-
-      if (m === 0 && d === 1) return {name: "New Year's Day", emoji: "🎉"};
-      if (m === 6 && d === 4) return {name: "Independence Day", emoji: "🎆"};
-      if (m === 10 && d === 11) return {name: "Veterans Day", emoji: "🇺🇸"};
-      if (m === 11 && d === 25) return {name: "Christmas Day", emoji: "🎄"};
-      if (m === 0 && d === nthWeekday(3, 1, 0)) return {name: "Martin Luther King Jr. Day", emoji: "🎉"};
-      if (m === 1 && d === nthWeekday(3, 1, 1)) return {name: "Presidents' Day", emoji: "🎉"};
-      if (m === 4 && d === nthWeekday(5, 1, 4)) return {name: "Memorial Day", emoji: "🎉"};
-      if (m === 8 && d === nthWeekday(1, 1, 8)) return {name: "Labor Day", emoji: "🎉"};
-      if (m === 9 && d === nthWeekday(2, 1, 9)) return {name: "Columbus Day", emoji: "🎉"};
-      if (m === 10 && d === nthWeekday(4, 4, 10)) return {name: "Thanksgiving Day", emoji: "🦃"};
-
-      return null;
-    }
-
-    function fetchMoon(lat, lon, callback) {
-      fetch(`https://wttr.in/\( {lat}, \){lon}?format=%m`)
-        .then(r => r.text())
-        .then(text => callback(text.trim()))
-        .catch(() => callback(''));
-    }
-
-    function fetchWeather() {
-      // Hardcoded Bakersfield for reliable test - remove or replace with geolocation later
-      const lat = 35.3733;
-      const lon = -119.0187;
-
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=\( {lat}&longitude= \){lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
-
-      fetch(url)
-        .then(r => {
-          if (!r.ok) throw new Error('API response not OK: ' + r.status);
-          return r.json();
-        })
-        .then(data => {
-          if (data.current) {
-            const temp = Math.round(data.current.temperature_2m);
-            const humidity = data.current.relative_humidity_2m;
-            const wind = Math.round(data.current.wind_speed_10m);
-            const precip = data.current.precipitation.toFixed(2);
-            const condition = temp > 70 ? '☀' : temp > 50 ? '⛅' : temp > 32 ? '☁' : '❄';
-
-            document.getElementById('weather').innerText = `${condition} ${temp}°F ${humidity}% ${wind}mph ${precip}in`;
-          } else {
-            document.getElementById('weather').innerText = 'No current data from API';
-          }
-
-          fetchMoon(lat, lon, moonEmoji => {
-            document.getElementById('moon-emoji').innerText = moonEmoji;
-            document.getElementById('moon-desc').innerText = moonDescriptions[moonEmoji] || '';
-          });
-
-          const holiday = getHolidayInfo();
-          document.getElementById('holiday').innerText = holiday ? `${holiday.emoji} ${holiday.name}` : '';
-        })
-        .catch(err => {
-          document.getElementById('weather').innerText = 'Weather load failed: ' + err.message;
-        });
-    }
-
-    fetchWeather();
-    setInterval(fetchWeather, 300000); // 5 min refresh
+    // Weather from wttr.in - F, mph, no location name
+    fetch('https://wttr.in/Rocklin?format="%c %t(%F) %h %w(mph) %p\n"')
+      .then(r => r.text())
+      .then(text => {
+        let cleaned = text.trim().replace(/"/g, '').replace(/\([^)]*\)/g, '').replace(/km\/h/g, 'mph');
+        document.getElementById('weather').innerText = cleaned;
+      })
+      .catch(() => {
+        document.getElementById('weather').innerText = 'Weather load failed';
+      });
   </script>
 </body>
 </html>
