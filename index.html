@@ -126,7 +126,8 @@
     }
 
     function fetchWeather(lat, lon) {
-      const url = `https://wttr.in/\( {lat}, \){lon}?format="%c %t %h %w %p %m"&u`;
+      // %P = precipitation in inches, ?u forces US units
+      const url = `https://wttr.in/\( {lat}, \){lon}?format="%c %t %h %w %P %m"&u`;
 
       fetch(url)
         .then(r => r.text())
@@ -135,6 +136,7 @@
             .replace(/"/g, '')
             .replace(/\s+/g, ' ')
             .replace(/^\+/, '')
+            .replace(/mm|cm|km\/h|C/g, '')  // kill any metric that slips through
             .trim();
 
           const parts = cleaned.split(' ');
