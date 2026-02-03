@@ -43,7 +43,7 @@
   </div>
 
   <script>
-    // Real ticking date/time (no placeholders)
+    // Real ticking local date/time (automatically uses device's timezone)
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -52,22 +52,64 @@
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const seconds = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('datetime').innerText = month + '/' + day + '/' + year + ' ' + hours + ':' + minutes + ':' + seconds;
+      document.getElementById('datetime').innerText = 
+        `\( {month}/ \){day}/${year} \( {hours}: \){minutes}:${seconds}`;
     }
 
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Weather from wttr.in - F, mph, no location name
-    fetch('https://wttr.in/Rocklin?format="%c %t(%F) %h %w(mph) %p\n"')
-      .then(r => r.text())
-      .then(text => {
-        let cleaned = text.trim().replace(/"/g, '').replace(/\([^)]*\)/g, '').replace(/km\/h/g, 'mph');
-        document.getElementById('weather').innerText = cleaned;
-      })
-      .catch(() => {
-        document.getElementById('weather').innerText = 'Weather load failed';
-      });
+    // Function to fetch and display weather
+    function fetchWeather(lat, lon) {
+      // Use lat,lon directly (wttr.in supports it), force imperial units with ?u
+      // Custom format: condition symbol + temp °F + humidity + wind mph + precip
+      // No location shown (%l is omitted)
+      const url = `https://wttr.in/\( {lat}, \){lon}?format="%c+%t°F+%h+%w(mph)+%p"&u`;
+
+      fetch(url)
+        .then(r => {
+          if (!r.ok) throw new Error('Network response was not ok');
+          return r.text();
+        })
+        .then(text => {
+          let cleaned = text.trim()
+            .replace(/"/g, '')              // remove quotes
+            .replace(/\+/g, ' ')            // replace + with space for readability
+            .replace(/km\/h/g, 'mph');      // safety replace (though ?u prevents it)
+
+          document.getElementById('weather').innerText = cleaned || 'Weather data empty';
+        })
+        .catch(err => {
+          console.error(err);
+          document.getElementById('weather').innerText = 'Weather load failed';
+        });
+    }
+
+    // Get location and fetch weather
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude.toFixed(4);
+          const lon = position.coords.longitude.toFixed(4);
+          fetchWeather(lat, lon);
+
+          // Optional: refresh weather every 10 minutes as location might change
+          setInterval(() => {
+            navigator.geolocation.getCurrentPosition(
+              pos => fetchWeather(pos.coords.latitude.toFixed(4), pos.coords.longitude.toFixed(4)),
+              () => {} // silent fail on refresh
+            );
+          }, 10 * 60 * 1000);
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          document.getElementById('weather').innerText = 'Location access denied or unavailable';
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+      );
+    } else {
+      document.getElementById('weather').innerText = 'Geolocation not supported';
+    }
   </script>
 </body>
 </html>
