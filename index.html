@@ -5,50 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Truck Weather Overlay - Lime Green</title>
   <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      background: transparent !important;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
-      color: #32CD32;
-      text-shadow: 0 0 4px black, 0 0 8px black;
-    }
-    #container {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      padding: 6px 10px;
-      background: transparent;
-      font-size: 22px;
-      line-height: 1.4;
-      pointer-events: none;
-      white-space: nowrap;
-    }
-    .timestamp {
-      font-weight: bold;
-      margin-bottom: 8px;
-      font-size: 24px;
-    }
-    #weather {
-      margin-top: 4px;
-    }
-    #moon-line {
-      margin-top: 4px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 26px;
-    }
-    #moon-emoji {
-      font-size: 36px;
-    }
-    #holiday {
-      margin-top: 4px;
-      font-style: italic;
-      color: #00FF00;
-    }
+    body, html { margin:0; padding:0; height:100%; background:transparent !important; overflow:hidden;
+      font-family:Arial,sans-serif; color:#32CD32; text-shadow:0 0 4px black, 0 0 8px black; }
+    #container { position:absolute; top:10px; left:10px; padding:6px 10px; background:transparent;
+      font-size:22px; line-height:1.4; pointer-events:none; white-space:nowrap; }
+    .timestamp { font-weight:bold; margin-bottom:8px; font-size:24px; }
+    #weather { margin-top:4px; }
+    #moon-line { margin-top:4px; display:flex; align-items:center; gap:8px; font-size:26px; }
+    #moon-emoji { font-size:36px; }
+    #holiday { margin-top:4px; font-style:italic; color:#00FF00; }
   </style>
 </head>
 <body>
@@ -63,105 +28,35 @@
   </div>
 
   <script>
-    // Original ticking time - unchanged, works perfectly
+    // Your original ticking time – works perfectly
     function updateTime() {
       const now = new Date();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const year = now.getFullYear();
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('datetime').innerText = month + '/' + day + '/' + year + ' ' + hours + ':' + minutes + ':' + seconds;
+      const m = String(now.getMonth()+1).padStart(2,'0');
+      const d = String(now.getDate()).padStart(2,'0');
+      const y = now.getFullYear();
+      const h = String(now.getHours()).padStart(2,'0');
+      const min = String(now.getMinutes()).padStart(2,'0');
+      const s = String(now.getSeconds()).padStart(2,'0');
+      document.getElementById('datetime').innerText = `\( {m}/ \){d}/${y} \( {h}: \){min}:${s}`;
     }
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Moon emoji to description (wttr.in uses these)
-    const moonDescriptions = {
-      '🌑': 'New Moon',
-      '🌒': 'Waxing Crescent',
-      '🌓': 'First Quarter',
-      '🌔': 'Waxing Gibbous',
-      '🌕': 'Full Moon',
-      '🌖': 'Waning Gibbous',
-      '🌗': 'Last Quarter',
-      '🌘': 'Waning Crescent'
+    // Moon descriptions
+    const moonDesc = {
+      '🌑':'New Moon','🌒':'Waxing Crescent','🌓':'First Quarter','🌔':'Waxing Gibbous',
+      '🌕':'Full Moon','🌖':'Waning Gibbous','🌗':'Last Quarter','🌘':'Waning Crescent'
     };
 
-    // Holiday check - no Juneteenth
-    function getHolidayInfo() {
-      const now = new Date();
-      const month = now.getMonth();
-      const day = now.getDate();
-      const year = now.getFullYear();
-
-      function nthWeekday(n, wd, m) {
-        let d = new Date(year, m, 1);
-        let count = 0;
-        let last = null;
-        while (d.getMonth() === m) {
-          if (d.getDay() === wd) {
-            count++;
-            last = d.getDate();
-            if (count === n) return last;
-          }
-          d.setDate(d.getDate() + 1);
-        }
-        return n > 4 ? last : null;
-      }
-
-      if (month === 0 && day === 1) return {name: "New Year's Day", emoji: "🎉"};
-      if (month === 6 && day === 4) return {name: "Independence Day", emoji: "🎆"};
-      if (month === 10 && day === 11) return {name: "Veterans Day", emoji: "🇺🇸"};
-      if (month === 11 && day === 25) return {name: "Christmas Day", emoji: "🎄"};
-      if (month === 0 && day === nthWeekday(3, 1, 0)) return {name: "Martin Luther King Jr. Day", emoji: "🎉"};
-      if (month === 1 && day === nthWeekday(3, 1, 1)) return {name: "Presidents' Day", emoji: "🎉"};
-      if (month === 4 && day === nthWeekday(5, 1, 4)) return {name: "Memorial Day", emoji: "🎉"};
-      if (month === 8 && day === nthWeekday(1, 1, 8)) return {name: "Labor Day", emoji: "🎉"};
-      if (month === 9 && day === nthWeekday(2, 1, 9)) return {name: "Columbus Day", emoji: "🎉"};
-      if (month === 10 && day === nthWeekday(4, 4, 10)) return {name: "Thanksgiving Day", emoji: "🦃"};
-
-      return null;
-    }
-
-    // Weather fetch - use your location coords, force °F/mph, add moon
-    function fetchWeather() {
-      // West Jordan approx coords (no geolocation prompt needed)
-      const lat = '40.606';
-      const lon = '-111.939';
-      const url = `https://wttr.in/\( {lat}, \){lon}?format=%c+%t+%h+%w+%p+%m&u`;
-
-      fetch(url)
-        .then(r => r.text())
-        .then(text => {
-          let cleaned = text.trim()
-            .replace(/"/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-
-          // Split moon (last token usually emoji)
-          const parts = cleaned.split(' ');
-          let moonEmoji = parts.pop() || '';
-          if (!moonEmoji.match(/[🌑-🌘]/)) moonEmoji = ''; // safety
-          const weatherStr = parts.join(' ').replace(/^\+/, '').trim();
-
-          document.getElementById('weather').innerText = weatherStr || 'No weather data';
-
-          document.getElementById('moon-emoji').innerText = moonEmoji;
-          const desc = moonDescriptions[moonEmoji] || '';
-          document.getElementById('moon-desc').innerText = desc;
-
-          const holiday = getHolidayInfo();
-          document.getElementById('holiday').innerText = holiday ? `${holiday.emoji} ${holiday.name}` : '';
-        })
-        .catch(() => {
-          document.getElementById('weather').innerText = 'Weather load failed';
-        });
-    }
-
-    fetchWeather();
-    setInterval(fetchWeather, 10 * 60 * 1000); // refresh every 10 min
-  </script>
-</body>
-</html>
+    // Holidays – NO Juneteenth
+    function getHoliday() {
+      const d = new Date(), m = d.getMonth(), day = d.getDate(), y = d.getFullYear();
+      function nth(n,wd,mon){ let dd=new Date(y,mon,1); let c=0, last=null;
+        while(dd.getMonth()===mon){ if(dd.getDay()===wd){c++; last=dd.getDate(); if(c===n) return last;}
+        dd.setDate(dd.getDate()+1); } return n>4 ? last : null; }
+      if(m===0 && day===1) return {n:"New Year's Day", e:"🎉"};
+      if(m===6 && day===4) return {n:"Independence Day", e:"🎆"};
+      if(m===10 && day===11) return {n:"Veterans Day", e:"🇺🇸"};
+      if(m===11 && day===25) return {n:"Christmas Day", e:"🎄"};
+      if(m===0 && day===nth(3,1,0)) return {n:"Martin Luther King Jr. Day", e:"🎉"};
+      if(m
