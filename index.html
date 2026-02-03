@@ -66,7 +66,6 @@
   </div>
 
   <script>
-    // Ticking time (your original, never broken)
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -126,47 +125,56 @@
       return null;
     }
 
-    function fetchWeather(lat, lon) {
-      const cacheBust = Date.now();
-      const url = `https://wttr.in/\( {lat}, \){lon}?format="%c %t %h %w %P %m"&u&t=${cacheBust}`;
-
-      fetch(url)
+    // Fetch moon phase from wttr.in (only for emoji)
+    function fetchMoon(lat, lon, callback) {
+      fetch(`https://wttr.in/\( {lat}, \){lon}?format=%m`)
         .then(r => r.text())
         .then(text => {
-          let cleaned = text.trim()
-            .replace(/"/g, '')
-            .replace(/\s+/g, ' ')
-            .replace(/^\+/, '')
-            .replace(/mm|cm|km\/h|hPa|C|inHg|Pa|1012|1113/g, '') // nuke all known junk
-            .replace(/  +/g, ' ')
-            .trim();
-
-          const parts = cleaned.split(' ');
-          let moonEmoji = parts.pop() || '';
-          if (!/[🌑🌒🌓🌔🌕🌖🌗🌘]/.test(moonEmoji)) moonEmoji = '';
-          const weatherStr = parts.join(' ').trim();
-
-          document.getElementById('weather').innerText = weatherStr || 'No weather data';
-          document.getElementById('moon-emoji').innerText = moonEmoji;
-          document.getElementById('moon-desc').innerText = moonDescriptions[moonEmoji] || '';
-
-          const holiday = getHolidayInfo();
-          document.getElementById('holiday').innerText = holiday ? `${holiday.emoji} ${holiday.name}` : '';
+          const moonEmoji = text.trim();
+          callback(moonEmoji);
         })
-        .catch(err => {
-          console.log('Fetch error:', err);
+        .catch(() => callback(''));
+    }
+
+    // Main weather from Open-Meteo (forced US units, no cache issues)
+    function fetchWeather(lat, lon) {
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=\( {lat}&longitude= \){lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
+
+      fetch(weatherUrl)
+        .then(r => r.json())
+        .then(data => {
+          if (data.current) {
+            const temp = Math.round(data.current.temperature_2m);
+            const humidity = data.current.relative_humidity_2m;
+            const wind = Math.round(data.current.wind_speed_10m);
+            const precip = data.current.precipitation.toFixed(2);
+            const condition = temp > 70 ? '☀' : temp > 50 ? '⛅' : '☁'; // simple icon
+
+            const weatherStr = `${condition} ${temp}°F ${humidity}% ${wind}mph ${precip}in`;
+            document.getElementById('weather').innerText = weatherStr;
+
+            // Get moon from wttr.in
+            fetchMoon(lat, lon, moonEmoji => {
+              document.getElementById('moon-emoji').innerText = moonEmoji;
+              document.getElementById('moon-desc').innerText = moonDescriptions[moonEmoji] || '';
+            });
+          } else {
+            document.getElementById('weather').innerText = 'Weather data error';
+          }
+        })
+        .catch(() => {
           document.getElementById('weather').innerText = 'Weather load failed';
         });
+
+      const holiday = getHolidayInfo();
+      document.getElementById('holiday').innerText = holiday ? `${holiday.emoji} ${holiday.name}` : '';
     }
 
     function loadWeather() {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          pos => fetchWeather(pos.coords.latitude.toFixed(4), pos.coords.longitude.toFixed(4)),
-          err => {
-            console.log('Geo error:', err);
-            document.getElementById('weather').innerText = 'Location denied - check Chrome settings';
-          },
+          pos => fetchWeather(pos.coords.latitude, pos.coords.longitude),
+          () => document.getElementById('weather').innerText = 'Location denied - allow in Chrome settings',
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
       } else {
@@ -175,7 +183,7 @@
     }
 
     loadWeather();
-    setInterval(loadWeather, 300000); // 5 min refresh for driving
+    setInterval(loadWeather, 600000); // 10 min
   </script>
 </body>
 </html>
