@@ -82,10 +82,8 @@
       const month = now.getMonth() + 1;
       const day = now.getDate();
 
-      // Approximate Julian day
       let jd = 367 * year - Math.floor(7 * (year + Math.floor((month + 9) / 12)) / 4) + Math.floor(275 * month / 9) + day + 1721013.5;
 
-      // Days since known new moon (Jan 6, 2000)
       let days = jd - 2451545.0;
       let phase = (days % 29.53058867) / 29.53058867;
 
@@ -93,56 +91,72 @@
       let desc = 'New Moon';
 
       if (phase < 0.03 || phase > 0.97) {
-        emoji = '🌑';
-        desc = 'New Moon';
+        emoji = '🌑'; desc = 'New Moon';
       } else if (phase < 0.22) {
-        emoji = '🌒';
-        desc = 'Waxing Crescent';
+        emoji = '🌒'; desc = 'Waxing Crescent';
       } else if (phase < 0.28) {
-        emoji = '🌓';
-        desc = 'First Quarter';
+        emoji = '🌓'; desc = 'First Quarter';
       } else if (phase < 0.47) {
-        emoji = '🌔';
-        desc = 'Waxing Gibbous';
+        emoji = '🌔'; desc = 'Waxing Gibbous';
       } else if (phase < 0.53) {
-        emoji = '🌕';
-        desc = 'Full Moon';
+        emoji = '🌕'; desc = 'Full Moon';
       } else if (phase < 0.72) {
-        emoji = '🌖';
-        desc = 'Waning Gibbous';
+        emoji = '🌖'; desc = 'Waning Gibbous';
       } else if (phase < 0.78) {
-        emoji = '🌗';
-        desc = 'Last Quarter';
+        emoji = '🌗'; desc = 'Last Quarter';
       } else {
-        emoji = '🌘';
-        desc = 'Waning Crescent';
+        emoji = '🌘'; desc = 'Waning Crescent';
       }
 
       document.getElementById('moon-emoji').innerText = emoji;
       document.getElementById('moon-desc').innerText = desc;
     }
 
-    // Run moon phase immediately and every hour
     getMoonPhase();
-    setInterval(getMoonPhase, 3600000);
+    setInterval(getMoonPhase, 3600000); // hourly update
 
-    // Weather fetch - same stable Rocklin version
-    fetch('https://wttr.in/Rocklin?format="%c %t %h %w"&u')
-      .then(r => r.text())
-      .then(text => {
-        let cleaned = text.trim()
-          .replace(/"/g, '')
-          .replace(/\s+/g, ' ')
-          .replace(/^\+/, '')
-          .replace(/\(.*?\)/g, '')
-          .replace(/hPa|Pa|mm|cm|km\/h|C|°C|Pa|1025|in\([^)]*\)/g, '')
-          .trim();
+    // Dynamic weather with geolocation
+    function fetchWeather(lat, lon) {
+      const url = `https://wttr.in/\( {lat}, \){lon}?format="%c %t %h %w"&u`;
 
-        document.getElementById('weather').innerText = cleaned || 'No weather data';
-      })
-      .catch(() => {
-        document.getElementById('weather').innerText = 'Weather load failed';
-      });
+      fetch(url)
+        .then(r => r.text())
+        .then(text => {
+          let cleaned = text.trim()
+            .replace(/"/g, '')
+            .replace(/\s+/g, ' ')
+            .replace(/^\+/, '')
+            .replace(/\(.*?\)/g, '')
+            .replace(/hPa|Pa|mm|cm|km\/h|C|°C|Pa|1025|in\([^)]*\)/g, '')
+            .trim();
+
+          document.getElementById('weather').innerText = cleaned || 'No weather data';
+        })
+        .catch(() => {
+          document.getElementById('weather').innerText = 'Weather load failed';
+        });
+    }
+
+    function loadWeather() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const lat = pos.coords.latitude.toFixed(4);
+            const lon = pos.coords.longitude.toFixed(4);
+            fetchWeather(lat, lon);
+          },
+          () => {
+            document.getElementById('weather').innerText = 'Location denied - allow in Chrome settings';
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+      } else {
+        document.getElementById('weather').innerText = 'Geolocation not supported';
+      }
+    }
+
+    loadWeather();
+    setInterval(loadWeather, 600000); // 10 min refresh
   </script>
 </body>
 </html>
