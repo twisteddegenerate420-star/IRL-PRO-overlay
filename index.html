@@ -35,7 +35,7 @@
       margin-top: 4px;
     }
     #moon-line {
-      margin-top: 4px;
+      margin-top: 6px;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -47,6 +47,11 @@
     #moon-desc {
       font-size: 20px;
     }
+    #error {
+      color: #ff6666;
+      font-size: 18px;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -57,6 +62,7 @@
       <span id="moon-emoji"></span>
       <span id="moon-desc"></span>
     </div>
+    <div id="error"></div>
   </div>
 
   <script>
@@ -115,24 +121,49 @@
     getMoonPhase();
     setInterval(getMoonPhase, 3600000); // hourly
 
-    // Weather from wttr.in - F, mph, NO location name, NO mm (precip as % only)
-    fetch('https://wttr.in/?format="%c %t(%F) %h %w(mph) %p\n"&u')
-      .then(r => r.text())
-      .then(text => {
-        let cleaned = text.trim()
-          .replace(/"/g, '')
-          .replace(/\([^)]*\)/g, '')  // remove (F) note
-          .replace(/\s+/g, ' ')
-          .replace(/mm/g, '')  // remove any mm completely
-          .replace(/0.0/g, '0')  // simplify 0.0 to 0 for precip %
-          .replace(/Rocklin:/g, '')  // remove location name
-          .trim();
+    // Dynamic weather from Open-Meteo + IP location (follows you as you drive)
+    async function getWeather() {
+      document.getElementById('error').innerText = 'Loading weather...';
+      try {
+        // Get lat/lon from IP (no geolocation prompt)
+        const ipRes = await fetch('https://ipapi.co/json/');
+        if (!ipRes.ok) throw new Error('IP location failed');
+        const ipData = await ipRes.json();
+        const lat = ipData.latitude;
+        const lon = ipData.longitude;
+        if (!lat || !lon) throw new Error('No location');
 
-        document.getElementById('weather').innerText = cleaned || 'No weather data';
-      })
-      .catch(() => {
-        document.getElementById('weather').innerText = 'Weather load failed';
-      });
+        // Open-Meteo in F and mph
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=\( {lat}&longitude= \){lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation_probability&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Weather API failed');
+        const data = await res.json();
+
+        const current = data.current;
+        document.getElementById('temp').innerText = Math.round(current.temperature_2m) + '°F';
+        document.getElementById('humidity').innerText = current.relative_humidity_2m + '%';
+        document.getElementById('wind').innerText = Math.round(current.wind_speed_10m) + ' mph';
+
+        let precip = '0%';
+        if (current.precipitation_probability != null) {
+          precip = current.precipitation_probability + '%';
+        } else if (data.hourly?.precipitation_probability?.length > 0) {
+          precip = Math.round(data.hourly.precipitation_probability[0]) + '%';
+        }
+        document.getElementById('precip').innerText = precip;
+
+        document.getElementById('error').innerText = '';
+      } catch (e) {
+        document.getElementById('error').innerText = 'Weather failed';
+        document.getElementById('temp').innerText = 'N/A °F';
+        document.getElementById('precip').innerText = 'N/A %';
+        document.getElementById('humidity').innerText = 'N/A %';
+        document.getElementById('wind').innerText = 'N/A mph';
+      }
+    }
+
+    getWeather();
+    setInterval(getWeather, 5 * 60 * 1000); // refresh every 5 min
   </script>
 </body>
 </html>
