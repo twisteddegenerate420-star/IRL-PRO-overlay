@@ -34,13 +34,15 @@
     #weather {
       margin-top: 4px;
     }
-    #moon {
+    #moon-line {
       margin-top: 4px;
-      font-size: 28px; /* bigger for emoji */
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 26px;
     }
-    #moon-desc {
-      margin-top: 2px;
-      font-size: 18px;
+    #moon-emoji {
+      font-size: 32px;
     }
     #holiday {
       margin-top: 4px;
@@ -53,13 +55,15 @@
   <div id="container">
     <div class="timestamp" id="datetime">Loading time...</div>
     <div id="weather">Loading weather...</div>
-    <div id="moon">Loading moon...</div>
-    <div id="moon-desc"></div>
+    <div id="moon-line">
+      <span id="moon-emoji"></span>
+      <span id="moon-desc"></span>
+    </div>
     <div id="holiday"></div>
   </div>
 
   <script>
-    // Fixed ticking local date/time (MST or device timezone)
+    // Ticking local date/time (device timezone, e.g. MST)
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -73,7 +77,7 @@
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Moon phase emoji to description map
+    // Moon phase emoji to description
     const moonDescriptions = {
       '🌑': 'New Moon',
       '🌒': 'Waxing Crescent',
@@ -82,43 +86,34 @@
       '🌕': 'Full Moon',
       '🌖': 'Waning Gibbous',
       '🌗': 'Last Quarter',
-      '🌘': 'Waning Crescent',
-      '🌙': 'Crescent Moon' // fallback if any variant
+      '🌘': 'Waning Crescent'
     };
 
-    // US federal holidays checker (no Juneteenth, with holiday-specific emojis)
+    // US federal holidays (no Juneteenth, with emojis)
     function getHolidayInfo(date) {
       const month = date.getMonth();
       const day = date.getDate();
       const year = date.getFullYear();
 
-      // Helper for nth weekday (0=Sun, 1=Mon, ..., 6=Sat)
       function nthWeekday(n, targetWeekday, m) {
         let d = new Date(year, m, 1);
         let count = 0;
+        let last = null;
         while (d.getMonth() === m) {
           if (d.getDay() === targetWeekday) {
             count++;
-            if (count === n) return d.getDate();
+            last = d.getDate();
+            if (count === n) return last;
           }
           d.setDate(d.getDate() + 1);
         }
-        // For "last" (n=5 or higher), return last matching
-        if (n >= 5) {
-          d.setDate(d.getDate() - 1);
-          while (d.getDay() !== targetWeekday) d.setDate(d.getDate() - 1);
-          return d.getDate();
-        }
-        return null;
+        return n > 4 ? last : null;
       }
 
-      // Fixed dates + observed adjustments (basic: if weekend, check nearby but use actual date)
       if (month === 0 && day === 1) return {name: "New Year's Day", emoji: "🎉"};
       if (month === 6 && day === 4) return {name: "Independence Day", emoji: "🎆"};
       if (month === 10 && day === 11) return {name: "Veterans Day", emoji: "🇺🇸"};
       if (month === 11 && day === 25) return {name: "Christmas Day", emoji: "🎄"};
-
-      // Variable dates
       if (month === 0 && day === nthWeekday(3, 1, 0)) return {name: "Martin Luther King Jr. Day", emoji: "🎉"};
       if (month === 1 && day === nthWeekday(3, 1, 1)) return {name: "Presidents' Day", emoji: "🎉"};
       if (month === 4 && day === nthWeekday(5, 1, 4)) return {name: "Memorial Day", emoji: "🎉"};
@@ -129,47 +124,45 @@
       return null;
     }
 
-    // Fetch weather + moon
+    // Fetch weather with forced imperial units
     function fetchWeather(lat, lon) {
-      const url = `https://wttr.in/\( {lat}, \){lon}?format=" %c %t %h %w %p %m "&u`;
+      // ?u forces °F and mph; format includes %m for moon emoji at end
+      const url = `https://wttr.in/\( {lat}, \){lon}?format=%c+%t+%h+%w+%p+%m&u`;
 
       fetch(url)
         .then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          if (!r.ok) throw new Error('Fetch failed');
           return r.text();
         })
         .then(text => {
           let cleaned = text.trim()
             .replace(/"/g, '')
             .replace(/\s+/g, ' ')
-            .replace(/km\/h/g, 'mph')
+            .replace(/km\/h/g, 'mph') // extra safety
             .trim();
 
-          const parts = cleaned.split(' ');
-          const moonEmoji = parts.pop() || '🌑'; // last is moon emoji
-          const weatherStr = parts.join(' ');
+          // Extract moon emoji (last character-ish)
+          const moonMatch = cleaned.match(/[🌑🌒🌓🌔🌕🌖🌗🌘]/);
+          const moonEmoji = moonMatch ? moonMatch[0] : '';
+          const weatherStr = cleaned.replace(moonEmoji, '').trim().replace(/^\+/, ''); // remove leading + if present
 
           document.getElementById('weather').innerText = weatherStr || 'No weather data';
-          document.getElementById('moon').innerText = moonEmoji;
 
-          // Set moon description
-          const desc = moonDescriptions[moonEmoji] || 'Unknown Moon Phase';
+          document.getElementById('moon-emoji').innerText = moonEmoji;
+          const desc = moonDescriptions[moonEmoji] || 'Moon Phase';
           document.getElementById('moon-desc').innerText = desc;
 
-          // Holiday
           const now = new Date();
-          const holidayInfo = getHolidayInfo(now);
-          document.getElementById('holiday').innerText = holidayInfo ? `${holidayInfo.emoji} ${holidayInfo.name}` : '';
+          const holiday = getHolidayInfo(now);
+          document.getElementById('holiday').innerText = holiday ? `${holiday.emoji} ${holiday.name}` : '';
         })
         .catch(err => {
           console.error(err);
-          document.getElementById('weather').innerText = 'Weather failed';
-          document.getElementById('moon').innerText = '';
-          document.getElementById('moon-desc').innerText = '';
-          document.getElementById('holiday').innerText = '';
+          document.getElementById('weather').innerText = 'Weather load failed';
         });
     }
 
+    // Load geolocation and fetch
     function loadWeather() {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -178,19 +171,18 @@
             const lon = pos.coords.longitude.toFixed(4);
             fetchWeather(lat, lon);
           },
-          err => {
-            console.error('Geo error:', err);
-            document.getElementById('weather').innerText = 'Location access issue';
+          () => {
+            document.getElementById('weather').innerText = 'Location access denied';
           },
           { enableHighAccuracy: false, timeout: 15000, maximumAge: 120000 }
         );
       } else {
-        document.getElementById('weather').innerText = 'No geolocation support';
+        document.getElementById('weather').innerText = 'Geolocation not supported';
       }
     }
 
     loadWeather();
-    setInterval(loadWeather, 10 * 60 * 1000); // 10 min refresh
+    setInterval(loadWeather, 10 * 60 * 1000); // Refresh every 10 min
   </script>
 </body>
 </html>
