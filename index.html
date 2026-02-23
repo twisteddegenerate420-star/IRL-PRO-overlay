@@ -3,48 +3,52 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Truck Weather Overlay - Pro Lime</title>
+  <title>Truck Weather Overlay - Dynamic Float</title>
   <style>
-    /* 1. Monospaced HUD Styling */
     body, html {
       margin: 0;
       padding: 0;
       height: 100%;
       background: transparent !important;
       overflow: hidden;
-      font-family: 'Courier New', Courier, monospace; /* Pro tech font */
+      font-family: 'Courier New', Courier, monospace;
       color: #32CD32;
-      text-shadow: 0 0 5px rgba(0,0,0,0.8);
+      text-shadow: 2px 2px 4px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.8);
     }
 
-    /* 2. Glassmorphism Container */
     #container {
       position: absolute;
       bottom: 20px;
       left: 20px;
-      padding: 15px 25px;
-      background: rgba(0, 0, 0, 0.4); /* Dark translucent plate */
-      backdrop-filter: blur(8px);    /* Blur background for readability */
-      border-left: 4px solid #32CD32; /* Subtle "Status" bar */
-      border-radius: 4px;
+      background: transparent;
       line-height: 1.2;
       pointer-events: none;
-      animation: subtleGlow 4s infinite alternate; /* Pro animation */
     }
 
-    /* 3. Visual Hierarchy */
     .timestamp {
       font-weight: bold;
       font-size: 28px;
       letter-spacing: 2px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
-    #weather {
-      font-size: 20px;
-      opacity: 0.9;
+    #weather-container {
+      font-size: 22px;
       margin-bottom: 5px;
-      transition: opacity 0.5s ease-in-out;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* Dynamic Temp Classes */
+    .temp-normal { color: #32CD32; }
+    .temp-cold { color: #00BFFF; animation: tempPulse 2s infinite ease-in-out; }
+    .temp-hot { color: #FF4500; animation: tempPulse 2s infinite ease-in-out; }
+
+    @keyframes tempPulse {
+      0% { opacity: 1; text-shadow: 0 0 5px currentColor; }
+      50% { opacity: 0.7; text-shadow: 0 0 15px currentColor; }
+      100% { opacity: 1; text-shadow: 0 0 5px currentColor; }
     }
 
     #moon-line {
@@ -53,28 +57,18 @@
       gap: 12px;
     }
 
-    #moon-emoji {
-      font-size: 40px;
-      filter: drop-shadow(0 0 5px #32CD32);
-    }
-
-    #moon-desc {
-      font-size: 18px;
-      text-transform: uppercase; /* Tactical look */
-      letter-spacing: 1px;
-    }
-
-    /* 4. Subtle Pulse Animation */
-    @keyframes subtleGlow {
-      from { box-shadow: 0 0 10px rgba(50, 205, 50, 0.1); }
-      to { box-shadow: 0 0 20px rgba(50, 205, 50, 0.3); }
-    }
+    #moon-emoji { font-size: 40px; }
+    #moon-desc { font-size: 20px; text-transform: uppercase; }
   </style>
 </head>
 <body>
   <div id="container">
     <div class="timestamp" id="datetime">00/00/0000 00:00:00</div>
-    <div id="weather">Initializing Satellite Sync...</div>
+    <div id="weather-container">
+      <span id="weather-icon"></span>
+      <span id="temp-display">SYNCING...</span>
+      <span id="weather-details"></span>
+    </div>
     <div id="moon-line">
       <span id="moon-emoji"></span>
       <span id="moon-desc"></span>
@@ -82,7 +76,6 @@
   </div>
 
   <script>
-    // Real-time Clock
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -96,7 +89,6 @@
     setInterval(updateTime, 1000);
     updateTime();
 
-    // High-Precision Moon Logic
     function getMoonPhase() {
       const now = new Date();
       const jd = (now.getTime() / 86400000) + 2440587.5;
@@ -121,28 +113,38 @@
     getMoonPhase();
     setInterval(getMoonPhase, 900000);
 
-    // Reliable Weather Logic
     function fetchWeather(query) {
-      const weatherEl = document.getElementById('weather');
-      const url = `https://wttr.in/${query}?format="%c %t %h %w %p\n"&u`;
+      const url = `https://wttr.in/${query}?format="%c|%t|%h|%w|%p"&u`;
 
       fetch(url)
         .then(r => r.text())
         .then(text => {
-          let cleaned = text.trim().replace(/"/g, '').replace(/\([^)]*\)/g, '').replace(/0.0/g, '0').trim();
-          weatherEl.style.opacity = 0; // Fade transition
-          setTimeout(() => {
-            weatherEl.innerText = cleaned || 'Data Offline';
-            weatherEl.style.opacity = 1;
-          }, 500);
+          let parts = text.replace(/"/g, '').split('|');
+          if(parts.length < 2) return;
+
+          let icon = parts[0].trim();
+          let rawTemp = parts[1].trim().replace('°F', '').replace('+', '');
+          let tempNum = parseInt(rawTemp);
+          let details = `${parts[2]} ${parts[3]} ${parts[4]}`.replace(/mm/g, '').trim();
+
+          const tempEl = document.getElementById('temp-display');
+          
+          // Apply Temperature Styles
+          tempEl.innerText = `${rawTemp}°F`;
+          tempEl.className = ''; // reset
+          if (tempNum <= 32) tempEl.classList.add('temp-cold');
+          else if (tempNum >= 90) tempEl.classList.add('temp-hot');
+          else tempEl.classList.add('temp-normal');
+
+          document.getElementById('weather-icon').innerText = icon;
+          document.getElementById('weather-details').innerText = details;
         })
         .catch(() => {
-          weatherEl.innerText = 'Reconnecting...';
-          setTimeout(() => fetchWeather(query), 15000); // Retry soon
+          document.getElementById('temp-display').innerText = 'RECONNECTING...';
+          setTimeout(() => fetchWeather(query), 15000);
         });
     }
 
-    // Geolocation Boot
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         p => fetchWeather(`${p.coords.latitude.toFixed(4)},${p.coords.longitude.toFixed(4)}`),
