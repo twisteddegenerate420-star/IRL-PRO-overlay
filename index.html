@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Truck Weather Overlay - Dynamic Float</title>
+  <title>Truck Weather Overlay - IRL Pro Mobile</title>
   <style>
     body, html {
       margin: 0;
@@ -13,6 +13,7 @@
       overflow: hidden;
       font-family: 'Courier New', Courier, monospace;
       color: #32CD32;
+      /* Heavy shadow for visibility against road/sky backgrounds */
       text-shadow: 2px 2px 4px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.8);
     }
 
@@ -20,35 +21,42 @@
       position: absolute;
       bottom: 20px;
       left: 20px;
-      background: transparent;
-      line-height: 1.2;
+      line-height: 1.1;
       pointer-events: none;
+    }
+
+    #holiday-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 24px; /* Slightly larger for mobile visibility */
+      color: #FFD700; /* Gold text for holiday name */
+      margin-bottom: 6px;
+      font-weight: bold;
     }
 
     .timestamp {
       font-weight: bold;
       font-size: 28px;
-      letter-spacing: 2px;
-      margin-bottom: 8px;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
     }
 
     #weather-container {
       font-size: 22px;
       margin-bottom: 5px;
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
     }
 
-    /* Dynamic Temp Classes */
-    .temp-normal { color: #32CD32; }
-    .temp-cold { color: #00BFFF; animation: tempPulse 2s infinite ease-in-out; }
-    .temp-hot { color: #FF4500; animation: tempPulse 2s infinite ease-in-out; }
+    /* Temp Alert Pulsing */
+    .temp-cold { color: #00BFFF; animation: tempPulse 2s infinite; }
+    .temp-hot { color: #FF4500; animation: tempPulse 2s infinite; }
 
     @keyframes tempPulse {
-      0% { opacity: 1; text-shadow: 0 0 5px currentColor; }
-      50% { opacity: 0.7; text-shadow: 0 0 15px currentColor; }
-      100% { opacity: 1; text-shadow: 0 0 5px currentColor; }
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
     }
 
     #moon-line {
@@ -63,6 +71,10 @@
 </head>
 <body>
   <div id="container">
+    <div id="holiday-box">
+      <span id="holiday-icon"></span>
+      <span id="holiday-name"></span>
+    </div>
     <div class="timestamp" id="datetime">00/00/0000 00:00:00</div>
     <div id="weather-container">
       <span id="weather-icon"></span>
@@ -76,6 +88,54 @@
   </div>
 
   <script>
+    function getNthDay(year, month, dayOfWeek, n) {
+      let date = new Date(year, month, (n > 0 ? 1 : 0));
+      if (n > 0) {
+        while (date.getDay() !== dayOfWeek) date.setDate(date.getDate() + 1);
+        date.setDate(date.getDate() + (n - 1) * 7);
+      } else {
+        date = new Date(year, month + 1, 0);
+        while (date.getDay() !== dayOfWeek) date.setDate(date.getDate() - 1);
+      }
+      return date;
+    }
+
+    function getHolidayData(now) {
+      const y = now.getFullYear();
+      const m = now.getMonth();
+      const d = now.getDate();
+      
+      const hData = {
+        '0-1': { name: "New Year's Day", icon: "✦" },
+        '1-14': { name: "Valentine's Day", icon: "❤" },
+        '2-17': { name: "St. Patrick's Day", icon: "☘" },
+        '6-4': { name: "Independence Day", icon: "✷" },
+        '9-31': { name: "Halloween", icon: "☠" },
+        '10-11': { name: "Veterans Day", icon: "✪" },
+        '11-25': { name: "Christmas Day", icon: "🎄" },
+        '11-31': { name: "New Year's Eve", icon: "🎆" }
+      };
+
+      let result = hData[`${m}-${d}`] || { name: "", icon: "" };
+
+      const mothersDay = getNthDay(y, 4, 0, 2);
+      const fathersDay = getNthDay(y, 5, 0, 3);
+      const memDay = getNthDay(y, 4, 1, -1);
+      const laborDay = getNthDay(y, 8, 1, 1);
+      const thanksGiving = getNthDay(y, 10, 4, 4);
+      const tawStart = getNthDay(y, 8, 0, 2); 
+      const tawEnd = new Date(tawStart); tawEnd.setDate(tawStart.getDate() + 6);
+
+      if (m === mothersDay.getMonth() && d === mothersDay.getDate()) result = { name: "Mother's Day", icon: "✿" };
+      if (m === fathersDay.getMonth() && d === fathersDay.getDate()) result = { name: "Father's Day", icon: "⚓" };
+      if (m === memDay.getMonth() && d === memDay.getDate()) result = { name: "Memorial Day", icon: "✪" };
+      if (m === laborDay.getMonth() && d === laborDay.getDate()) result = { name: "Labor Day", icon: "⚙" };
+      if (m === thanksGiving.getMonth() && d === thanksGiving.getDate()) result = { name: "Thanksgiving", icon: "🦃" };
+      if (now >= tawStart && now <= tawEnd) result = { name: "Trucker Appreciation", icon: "🚛" };
+
+      return result;
+    }
+
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -84,7 +144,11 @@
       const h = String(now.getHours()).padStart(2, '0');
       const m = String(now.getMinutes()).padStart(2, '0');
       const s = String(now.getSeconds()).padStart(2, '0');
+      
       document.getElementById('datetime').innerText = `${month}/${day}/${year} ${h}:${m}:${s}`;
+      const holiday = getHolidayData(now);
+      document.getElementById('holiday-name').innerText = holiday.name;
+      document.getElementById('holiday-icon').innerText = holiday.icon;
     }
     setInterval(updateTime, 1000);
     updateTime();
@@ -115,34 +179,26 @@
 
     function fetchWeather(query) {
       const url = `https://wttr.in/${query}?format="%c|%t|%h|%w|%p"&u`;
+      fetch(url).then(r => r.text()).then(text => {
+        let parts = text.replace(/"/g, '').split('|');
+        if(parts.length < 2) return;
+        let rawTemp = parts[1].trim().replace('°F', '').replace('+', '');
+        let tempNum = parseInt(rawTemp);
+        // Scrubber to kill "mm", extra spaces, and keep it one line
+        let details = `${parts[2]} ${parts[3]} ${parts[4]}`.replace(/mm/g, '').replace(/\s+/g, ' ').trim();
 
-      fetch(url)
-        .then(r => r.text())
-        .then(text => {
-          let parts = text.replace(/"/g, '').split('|');
-          if(parts.length < 2) return;
+        const tempEl = document.getElementById('temp-display');
+        tempEl.innerText = `${rawTemp}°F`;
+        tempEl.className = ''; 
+        if (tempNum <= 32) tempEl.classList.add('temp-cold');
+        else if (tempNum >= 90) tempEl.classList.add('temp-hot');
 
-          let icon = parts[0].trim();
-          let rawTemp = parts[1].trim().replace('°F', '').replace('+', '');
-          let tempNum = parseInt(rawTemp);
-          let details = `${parts[2]} ${parts[3]} ${parts[4]}`.replace(/mm/g, '').trim();
-
-          const tempEl = document.getElementById('temp-display');
-          
-          // Apply Temperature Styles
-          tempEl.innerText = `${rawTemp}°F`;
-          tempEl.className = ''; // reset
-          if (tempNum <= 32) tempEl.classList.add('temp-cold');
-          else if (tempNum >= 90) tempEl.classList.add('temp-hot');
-          else tempEl.classList.add('temp-normal');
-
-          document.getElementById('weather-icon').innerText = icon;
-          document.getElementById('weather-details').innerText = details;
-        })
-        .catch(() => {
-          document.getElementById('temp-display').innerText = 'RECONNECTING...';
-          setTimeout(() => fetchWeather(query), 15000);
-        });
+        document.getElementById('weather-icon').innerText = parts[0].trim();
+        document.getElementById('weather-details').innerText = details;
+      }).catch(() => {
+        document.getElementById('temp-display').innerText = 'OFFLINE';
+        setTimeout(() => fetchWeather(query), 20000);
+      });
     }
 
     if (navigator.geolocation) {
@@ -150,9 +206,7 @@
         p => fetchWeather(`${p.coords.latitude.toFixed(4)},${p.coords.longitude.toFixed(4)}`),
         () => fetchWeather('')
       );
-    } else {
-      fetchWeather('');
-    }
+    } else { fetchWeather(''); }
   </script>
 </body>
 </html>
