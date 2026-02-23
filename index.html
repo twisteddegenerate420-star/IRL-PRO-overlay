@@ -3,18 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Truck Weather Overlay - IRL Pro Mobile</title>
+  <title>Truck Overlay - Sharp Vector</title>
   <style>
+    /* 1. FOCUS: SHARPNESS & CLARITY */
     body, html {
       margin: 0;
       padding: 0;
       height: 100%;
       background: transparent !important;
       overflow: hidden;
+      /* Monospace is best for alignment while moving */
       font-family: 'Courier New', Courier, monospace;
-      color: #32CD32;
-      /* Heavy shadow for visibility against road/sky backgrounds */
-      text-shadow: 2px 2px 4px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.8);
+      color: #32CD32; /* Lime Green */
+      
+      /* SHARP EDGE TECHNIQUE: Multi-directional 1px hard strokes kill the fuzz */
+      text-shadow: 
+        -1px -1px 0 #000,  
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000,
+         2px  2px 1px rgba(0,0,0,1);
+
+      /* Force Hardware Acceleration for cleaner text on mobile */
+      -webkit-font-smoothing: antialiased;
+      transform: translateZ(0);
+      text-rendering: optimizeLegibility;
     }
 
     #container {
@@ -29,16 +42,16 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 24px; /* Slightly larger for mobile visibility */
-      color: #FFD700; /* Gold text for holiday name */
+      font-size: 24px;
+      color: #FFD700; /* Gold */
       margin-bottom: 6px;
-      font-weight: bold;
+      font-weight: 900;
     }
 
     .timestamp {
-      font-weight: bold;
-      font-size: 28px;
-      letter-spacing: 1px;
+      font-weight: 900;
+      font-size: 30px; /* Slightly larger for glance-ability */
+      letter-spacing: -1px; /* Tighter letters = Sharper look */
       margin-bottom: 4px;
     }
 
@@ -48,28 +61,31 @@
       display: flex;
       gap: 10px;
       align-items: center;
+      font-weight: bold;
     }
 
-    /* Temp Alert Pulsing */
-    .temp-cold { color: #00BFFF; animation: tempPulse 2s infinite; }
-    .temp-hot { color: #FF4500; animation: tempPulse 2s infinite; }
+    /* Temp Colors - Pulsing only, no blur */
+    .temp-cold { color: #00BFFF; animation: sharpPulse 2s infinite; }
+    .temp-hot { color: #FF4500; animation: sharpPulse 2s infinite; }
 
-    @keyframes tempPulse {
+    @keyframes sharpPulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.6; }
+      50% { opacity: 0.7; }
     }
 
     #moon-line {
       display: flex;
       align-items: center;
       gap: 12px;
+      font-size: 20px;
+      font-weight: bold;
     }
 
-    #moon-emoji { font-size: 40px; }
-    #moon-desc { font-size: 20px; text-transform: uppercase; }
+    #moon-emoji { font-size: 36px; }
   </style>
 </head>
 <body>
+
   <div id="container">
     <div id="holiday-box">
       <span id="holiday-icon"></span>
@@ -88,6 +104,7 @@
   </div>
 
   <script>
+    // 1. DATE CALCULATOR
     function getNthDay(year, month, dayOfWeek, n) {
       let date = new Date(year, month, (n > 0 ? 1 : 0));
       if (n > 0) {
@@ -100,11 +117,9 @@
       return date;
     }
 
+    // 2. HOLIDAY LOGIC
     function getHolidayData(now) {
-      const y = now.getFullYear();
-      const m = now.getMonth();
-      const d = now.getDate();
-      
+      const y = now.getFullYear(); const m = now.getMonth(); const d = now.getDate();
       const hData = {
         '0-1': { name: "New Year's Day", icon: "✦" },
         '1-14': { name: "Valentine's Day", icon: "❤" },
@@ -115,7 +130,6 @@
         '11-25': { name: "Christmas Day", icon: "🎄" },
         '11-31': { name: "New Year's Eve", icon: "🎆" }
       };
-
       let result = hData[`${m}-${d}`] || { name: "", icon: "" };
 
       const mothersDay = getNthDay(y, 4, 0, 2);
@@ -123,7 +137,7 @@
       const memDay = getNthDay(y, 4, 1, -1);
       const laborDay = getNthDay(y, 8, 1, 1);
       const thanksGiving = getNthDay(y, 10, 4, 4);
-      const tawStart = getNthDay(y, 8, 0, 2); 
+      const tawStart = getNthDay(y, 8, 0, 2);
       const tawEnd = new Date(tawStart); tawEnd.setDate(tawStart.getDate() + 6);
 
       if (m === mothersDay.getMonth() && d === mothersDay.getDate()) result = { name: "Mother's Day", icon: "✿" };
@@ -132,10 +146,10 @@
       if (m === laborDay.getMonth() && d === laborDay.getDate()) result = { name: "Labor Day", icon: "⚙" };
       if (m === thanksGiving.getMonth() && d === thanksGiving.getDate()) result = { name: "Thanksgiving", icon: "🦃" };
       if (now >= tawStart && now <= tawEnd) result = { name: "Trucker Appreciation", icon: "🚛" };
-
       return result;
     }
 
+    // 3. CLOCK
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -144,23 +158,59 @@
       const h = String(now.getHours()).padStart(2, '0');
       const m = String(now.getMinutes()).padStart(2, '0');
       const s = String(now.getSeconds()).padStart(2, '0');
-      
       document.getElementById('datetime').innerText = `${month}/${day}/${year} ${h}:${m}:${s}`;
       const holiday = getHolidayData(now);
       document.getElementById('holiday-name').innerText = holiday.name;
       document.getElementById('holiday-icon').innerText = holiday.icon;
     }
-    setInterval(updateTime, 1000);
-    updateTime();
+    setInterval(updateTime, 1000); updateTime();
 
+    // 4. WEATHER (CRISP DATA)
+    function fetchWeather(location) {
+      const url = `https://wttr.in/${location}?format=%c|%t|%h|%w|%p&u&m`;
+      fetch(url, { headers: { "User-Agent": "curl" } })
+        .then(r => r.text())
+        .then(text => {
+          let parts = text.replace(/"/g, '').split('|');
+          if (parts.length < 2) return;
+          let rawTemp = parts[1].trim().replace('°F', '').replace('+', '');
+          let tempNum = parseInt(rawTemp);
+          let details = `${parts[2]} ${parts[3]} ${parts[4]}`.replace(/mm/g, '').replace(/\s+/g, ' ').trim();
+
+          const tempEl = document.getElementById('temp-display');
+          tempEl.innerText = `${rawTemp}°F`;
+          tempEl.className = ''; 
+          if (tempNum <= 32) tempEl.classList.add('temp-cold');
+          else if (tempNum >= 90) tempEl.classList.add('temp-hot');
+
+          document.getElementById('weather-icon').innerText = parts[0].trim();
+          document.getElementById('weather-details').innerText = details;
+        })
+        .catch(() => {
+          document.getElementById('temp-display').innerText = "RECONNECTING...";
+          setTimeout(() => initWeather(), 30000);
+        });
+    }
+
+    function initWeather() {
+      const fallback = "Dallas"; 
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (p) => fetchWeather(`${p.coords.latitude.toFixed(4)},${p.coords.longitude.toFixed(4)}`),
+          () => fetchWeather(fallback),
+          { timeout: 8000 }
+        );
+      } else { fetchWeather(fallback); }
+    }
+    initWeather(); setInterval(initWeather, 900000);
+
+    // 5. MOON PHASE
     function getMoonPhase() {
       const now = new Date();
       const jd = (now.getTime() / 86400000) + 2440587.5;
-      const newMoonRef = 2451550.1; 
-      const lunarCycle = 29.53058867;
+      const newMoonRef = 2451550.1; const lunarCycle = 29.53058867;
       let phase = ((jd - newMoonRef) % lunarCycle) / lunarCycle;
       if (phase < 0) phase += 1;
-
       let emoji, desc;
       if (phase < 0.03 || phase > 0.97) { emoji = '🌑'; desc = 'New Moon'; }
       else if (phase < 0.22) { emoji = '🌒'; desc = 'Waxing Crescent'; }
@@ -170,63 +220,10 @@
       else if (phase < 0.72) { emoji = '🌖'; desc = 'Waning Gibbous'; }
       else if (phase < 0.78) { emoji = '🌗'; desc = 'Last Quarter'; }
       else { emoji = '🌘'; desc = 'Waning Crescent'; }
-
       document.getElementById('moon-emoji').innerText = emoji;
       document.getElementById('moon-desc').innerText = desc;
     }
-    getMoonPhase();
-    setInterval(getMoonPhase, 900000);
-
-    function fetchWeather(query) {
-  // If query is empty, it uses your IP. If it fails, we'll try a fallback city.
-  const location = query || "Dallas"; 
-  const url = `https://wttr.in/${location}?format=%c|%t|%h|%w|%p&u&m`;
-
-  fetch(url, {
-    headers: {
-      "Accept-Language": "en-US",
-      // This "spoofs" a curl request to ensure we get a clean text-only string
-      "User-Agent": "curl/7.64.1" 
-    }
-  })
-  .then(r => {
-    if (!r.ok) throw new Error('Busy');
-    return r.text();
-  })
-  .then(text => {
-    // Scrub extra quotes or + signs that wttr.in sometimes adds
-    let parts = text.replace(/"/g, '').split('|');
-    if(parts.length < 2) return;
-
-    let rawTemp = parts[1].trim().replace('°F', '').replace('+', '');
-    let tempNum = parseInt(rawTemp);
-    let details = `${parts[2]} ${parts[3]} ${parts[4]}`.replace(/mm/g, '').replace(/\s+/g, ' ').trim();
-
-    const tempEl = document.getElementById('temp-display');
-    tempEl.innerText = `${rawTemp}°F`;
-    tempEl.className = ''; 
-    
-    // Auto-Color Logic
-    if (tempNum <= 32) tempEl.classList.add('temp-cold');
-    else if (tempNum >= 90) tempEl.classList.add('temp-hot');
-    else tempEl.classList.add('temp-normal');
-
-    document.getElementById('weather-icon').innerText = parts[0].trim();
-    document.getElementById('weather-details').innerText = details;
-  })
-  .catch(() => {
-    // If it fails, try again in 30s. Don't spam the server.
-    document.getElementById('temp-display').innerText = 'RECONNECTING...';
-    setTimeout(() => fetchWeather(location), 30000);
-  });
-}
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        p => fetchWeather(`${p.coords.latitude.toFixed(4)},${p.coords.longitude.toFixed(4)}`),
-        () => fetchWeather('')
-      );
-    } else { fetchWeather(''); }
+    getMoonPhase(); setInterval(getMoonPhase, 900000);
   </script>
 </body>
 </html>
