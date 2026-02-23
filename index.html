@@ -3,56 +3,78 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Truck Weather Overlay - Lime Green</title>
+  <title>Truck Weather Overlay - Pro Lime</title>
   <style>
+    /* 1. Monospaced HUD Styling */
     body, html {
       margin: 0;
       padding: 0;
       height: 100%;
       background: transparent !important;
       overflow: hidden;
-      font-family: Arial, sans-serif;
+      font-family: 'Courier New', Courier, monospace; /* Pro tech font */
       color: #32CD32;
-      text-shadow: 0 0 4px black, 0 0 8px black;
+      text-shadow: 0 0 5px rgba(0,0,0,0.8);
     }
+
+    /* 2. Glassmorphism Container */
     #container {
       position: absolute;
-      bottom: 10px;
-      left: 10px;
-      padding: 6px 10px;
-      background: transparent;
-      font-size: 22px;
-      line-height: 1.4;
+      bottom: 20px;
+      left: 20px;
+      padding: 15px 25px;
+      background: rgba(0, 0, 0, 0.4); /* Dark translucent plate */
+      backdrop-filter: blur(8px);    /* Blur background for readability */
+      border-left: 4px solid #32CD32; /* Subtle "Status" bar */
+      border-radius: 4px;
+      line-height: 1.2;
       pointer-events: none;
-      white-space: nowrap;
+      animation: subtleGlow 4s infinite alternate; /* Pro animation */
     }
+
+    /* 3. Visual Hierarchy */
     .timestamp {
       font-weight: bold;
-      margin-bottom: 8px;
-      font-size: 24px;
+      font-size: 28px;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
     }
+
     #weather {
-      margin-top: 4px;
+      font-size: 20px;
+      opacity: 0.9;
+      margin-bottom: 5px;
+      transition: opacity 0.5s ease-in-out;
     }
+
     #moon-line {
-      margin-top: 4px;
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 26px;
+      gap: 12px;
     }
+
     #moon-emoji {
-      font-size: 36px;
+      font-size: 40px;
+      filter: drop-shadow(0 0 5px #32CD32);
     }
+
     #moon-desc {
-      font-size: 20px;
+      font-size: 18px;
+      text-transform: uppercase; /* Tactical look */
+      letter-spacing: 1px;
+    }
+
+    /* 4. Subtle Pulse Animation */
+    @keyframes subtleGlow {
+      from { box-shadow: 0 0 10px rgba(50, 205, 50, 0.1); }
+      to { box-shadow: 0 0 20px rgba(50, 205, 50, 0.3); }
     }
   </style>
 </head>
 <body>
   <div id="container">
-    <div class="timestamp" id="datetime">Loading time...</div>
-    <div id="weather">Loading weather...</div>
+    <div class="timestamp" id="datetime">00/00/0000 00:00:00</div>
+    <div id="weather">Initializing Satellite Sync...</div>
     <div id="moon-line">
       <span id="moon-emoji"></span>
       <span id="moon-desc"></span>
@@ -60,103 +82,71 @@
   </div>
 
   <script>
-    // Ticking time
+    // Real-time Clock
     function updateTime() {
       const now = new Date();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
       const year = now.getFullYear();
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('datetime').innerText = month + '/' + day + '/' + year + ' ' + hours + ':' + minutes + ':' + seconds;
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('datetime').innerText = `${month}/${day}/${year} ${h}:${m}:${s}`;
     }
-
     setInterval(updateTime, 1000);
     updateTime();
 
-    // High-Precision Moon Phase Calculation
+    // High-Precision Moon Logic
     function getMoonPhase() {
       const now = new Date();
-      
-      // Calculate Julian Date from current Unix timestamp
-      // 2440587.5 is the JD for Jan 1, 1970
       const jd = (now.getTime() / 86400000) + 2440587.5;
-      
-      // Known New Moon reference: Jan 6, 2000 (JD 2451550.1)
       const newMoonRef = 2451550.1; 
       const lunarCycle = 29.53058867;
-      
-      let daysSince = jd - newMoonRef;
-      let phase = (daysSince % lunarCycle) / lunarCycle;
-
-      // Handle negative results from the modulo
+      let phase = ((jd - newMoonRef) % lunarCycle) / lunarCycle;
       if (phase < 0) phase += 1;
 
-      let emoji = '🌑';
-      let desc = 'New Moon';
-
-      // Phase mapping (0.0 to 1.0)
-      if (phase < 0.03 || phase > 0.97) {
-        emoji = '🌑'; desc = 'New Moon';
-      } else if (phase < 0.22) {
-        emoji = '🌒'; desc = 'Waxing Crescent';
-      } else if (phase < 0.28) {
-        emoji = '🌓'; desc = 'First Quarter';
-      } else if (phase < 0.47) {
-        emoji = '🌔'; desc = 'Waxing Gibbous';
-      } else if (phase < 0.53) {
-        emoji = '🌕'; desc = 'Full Moon';
-      } else if (phase < 0.72) {
-        emoji = '🌖'; desc = 'Waning Gibbous';
-      } else if (phase < 0.78) {
-        emoji = '🌗'; desc = 'Last Quarter';
-      } else {
-        emoji = '🌘'; desc = 'Waning Crescent';
-      }
+      let emoji, desc;
+      if (phase < 0.03 || phase > 0.97) { emoji = '🌑'; desc = 'New Moon'; }
+      else if (phase < 0.22) { emoji = '🌒'; desc = 'Waxing Crescent'; }
+      else if (phase < 0.28) { emoji = '🌓'; desc = 'First Quarter'; }
+      else if (phase < 0.47) { emoji = '🌔'; desc = 'Waxing Gibbous'; }
+      else if (phase < 0.53) { emoji = '🌕'; desc = 'Full Moon'; }
+      else if (phase < 0.72) { emoji = '🌖'; desc = 'Waning Gibbous'; }
+      else if (phase < 0.78) { emoji = '🌗'; desc = 'Last Quarter'; }
+      else { emoji = '🌘'; desc = 'Waning Crescent'; }
 
       document.getElementById('moon-emoji').innerText = emoji;
       document.getElementById('moon-desc').innerText = desc;
     }
-
-    // Run moon calculation immediately and refresh every 15 mins
     getMoonPhase();
     setInterval(getMoonPhase, 900000);
 
-    // Weather from wttr.in
-    function fetchWeather(locationQuery) {
-      const url = `https://wttr.in/${locationQuery}?format="%c %t(%F) %h %w(mph) %p\n"&u`;
+    // Reliable Weather Logic
+    function fetchWeather(query) {
+      const weatherEl = document.getElementById('weather');
+      const url = `https://wttr.in/${query}?format="%c %t %h %w %p\n"&u`;
+
       fetch(url)
         .then(r => r.text())
         .then(text => {
-          let cleaned = text.trim()
-            .replace(/"/g, '')
-            .replace(/\([^)]*\)/g, '')
-            .replace(/\s+/g, ' ')
-            .replace(/mm/g, '')
-            .replace(/0.0/g, '0')
-            .replace(/Rocklin:/g, '') 
-            .trim();
-
-          document.getElementById('weather').innerText = cleaned || 'No weather data';
+          let cleaned = text.trim().replace(/"/g, '').replace(/\([^)]*\)/g, '').replace(/0.0/g, '0').trim();
+          weatherEl.style.opacity = 0; // Fade transition
+          setTimeout(() => {
+            weatherEl.innerText = cleaned || 'Data Offline';
+            weatherEl.style.opacity = 1;
+          }, 500);
         })
         .catch(() => {
-          document.getElementById('weather').innerText = 'Weather load failed';
+          weatherEl.innerText = 'Reconnecting...';
+          setTimeout(() => fetchWeather(query), 15000); // Retry soon
         });
     }
 
-    // GPS / IP Fallback
+    // Geolocation Boot
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude.toFixed(4);
-          const lon = position.coords.longitude.toFixed(4);
-          fetchWeather(`${lat},${lon}`);
-        },
-        () => {
-          fetchWeather(''); // Fallback to IP
-        },
-        { timeout: 10000, enableHighAccuracy: true }
+        p => fetchWeather(`${p.coords.latitude.toFixed(4)},${p.coords.longitude.toFixed(4)}`),
+        () => fetchWeather('')
       );
     } else {
       fetchWeather('');
