@@ -178,28 +178,48 @@
     setInterval(getMoonPhase, 900000);
 
     function fetchWeather(query) {
-      const url = `https://wttr.in/${query}?format="%c|%t|%h|%w|%p"&u`;
-      fetch(url).then(r => r.text()).then(text => {
-        let parts = text.replace(/"/g, '').split('|');
-        if(parts.length < 2) return;
-        let rawTemp = parts[1].trim().replace('°F', '').replace('+', '');
-        let tempNum = parseInt(rawTemp);
-        // Scrubber to kill "mm", extra spaces, and keep it one line
-        let details = `${parts[2]} ${parts[3]} ${parts[4]}`.replace(/mm/g, '').replace(/\s+/g, ' ').trim();
+  // If query is empty, it uses your IP. If it fails, we'll try a fallback city.
+  const location = query || "Dallas"; 
+  const url = `https://wttr.in/${location}?format=%c|%t|%h|%w|%p&u&m`;
 
-        const tempEl = document.getElementById('temp-display');
-        tempEl.innerText = `${rawTemp}°F`;
-        tempEl.className = ''; 
-        if (tempNum <= 32) tempEl.classList.add('temp-cold');
-        else if (tempNum >= 90) tempEl.classList.add('temp-hot');
-
-        document.getElementById('weather-icon').innerText = parts[0].trim();
-        document.getElementById('weather-details').innerText = details;
-      }).catch(() => {
-        document.getElementById('temp-display').innerText = 'OFFLINE';
-        setTimeout(() => fetchWeather(query), 20000);
-      });
+  fetch(url, {
+    headers: {
+      "Accept-Language": "en-US",
+      // This "spoofs" a curl request to ensure we get a clean text-only string
+      "User-Agent": "curl/7.64.1" 
     }
+  })
+  .then(r => {
+    if (!r.ok) throw new Error('Busy');
+    return r.text();
+  })
+  .then(text => {
+    // Scrub extra quotes or + signs that wttr.in sometimes adds
+    let parts = text.replace(/"/g, '').split('|');
+    if(parts.length < 2) return;
+
+    let rawTemp = parts[1].trim().replace('°F', '').replace('+', '');
+    let tempNum = parseInt(rawTemp);
+    let details = `${parts[2]} ${parts[3]} ${parts[4]}`.replace(/mm/g, '').replace(/\s+/g, ' ').trim();
+
+    const tempEl = document.getElementById('temp-display');
+    tempEl.innerText = `${rawTemp}°F`;
+    tempEl.className = ''; 
+    
+    // Auto-Color Logic
+    if (tempNum <= 32) tempEl.classList.add('temp-cold');
+    else if (tempNum >= 90) tempEl.classList.add('temp-hot');
+    else tempEl.classList.add('temp-normal');
+
+    document.getElementById('weather-icon').innerText = parts[0].trim();
+    document.getElementById('weather-details').innerText = details;
+  })
+  .catch(() => {
+    // If it fails, try again in 30s. Don't spam the server.
+    document.getElementById('temp-display').innerText = 'RECONNECTING...';
+    setTimeout(() => fetchWeather(location), 30000);
+  });
+}
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
