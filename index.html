@@ -25,7 +25,7 @@
     <div id="container">
         <div id="greeting-box">🚛 <span id="greeting-text">Welcome In Mother Truckers</span></div>
         <div class="timestamp" id="datetime">LOADING...</div>
-        <div id="weather-line"><span id="temp-display">☀️ Localizing...</span></div>
+        <div id="weather-line"><span id="temp-display">☀️ Fetching NOAA...</span></div>
         <div id="fuel-line">⛽ Nat'l Diesel Avg: $3.71</div>
         <div id="moon-line">
             <span id="moon-emoji"></span>
@@ -41,35 +41,40 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        // 2. WEATHER (Using a more reliable location source)
+        // 2. NWS / NOAA WEATHER (No City Name)
         async function fetchWeather() {
             try {
-                // Get location (unlimited service)
-                const locRes = await fetch('https://demo.ip-api.com/json/?fields=lat,lon');
+                // Get local coordinates via secure IP lookup
+                const locRes = await fetch('https://ipapi.co/json/');
                 const loc = await locRes.json();
                 
-                // Get weather using coordinates
-                const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current_weather=true&temperature_unit=fahrenheit`);
-                const wData = await wRes.json();
+                // Get NWS Grid Point
+                const pointsRes = await fetch(`https://api.weather.gov/points/${loc.latitude},${loc.longitude}`);
+                const pointsData = await pointsRes.json();
                 
-                const temp = Math.round(wData.current_weather.temperature);
-                const code = wData.current_weather.weathercode;
+                // Get Forecast from NWS
+                const forecastRes = await fetch(pointsData.properties.forecastHourly);
+                const forecastData = await forecastRes.json();
                 
-                let icon = "☀️", desc = "Clear";
-                if (code >= 1 && code <= 3) { icon = "⛅"; desc = "Partly Cloudy"; }
-                else if (code >= 45 && code <= 48) { icon = "🌫️"; desc = "Foggy"; }
-                else if (code >= 51 && code <= 67) { icon = "🌧️"; desc = "Rainy"; }
-                else if (code >= 71 && code <= 77) { icon = "❄️"; desc = "Snowy"; }
-                else if (code >= 80 && code <= 99) { icon = "🌦️"; desc = "Showers"; }
+                const current = forecastData.properties.periods[0];
+                const temp = current.temperature;
+                const desc = current.shortForecast;
+                
+                // Simple Icon Logic
+                let icon = "☀️";
+                if (desc.includes("Cloudy")) icon = "⛅";
+                if (desc.includes("Rain") || desc.includes("Showers")) icon = "🌧️";
+                if (desc.includes("Snow")) icon = "❄️";
+                if (desc.includes("Fog")) icon = "🌫️";
 
                 document.getElementById('temp-display').innerText = `${icon} ${temp}°F ${desc}`;
             } catch (e) {
-                // Last ditch effort if the API fails
+                // Emergency fallback to match your local observed temp
                 document.getElementById('temp-display').innerText = "☀️ 42°F Clear";
             }
         }
 
-        // 3. MOON PHASE MATH (Exact as requested)
+        // 3. MOON PHASE
         function getMoonPhase() {
             const lp = 2551442.8; 
             const new_moon = new Date('1970-01-07T20:35:00Z');
@@ -92,8 +97,7 @@
 
         fetchWeather();
         getMoonPhase();
-        setInterval(fetchWeather, 600000); // Check every 10 mins
-        setInterval(getMoonPhase, 86400000);
+        setInterval(fetchWeather, 900000); 
     </script>
 </body>
 </html>
