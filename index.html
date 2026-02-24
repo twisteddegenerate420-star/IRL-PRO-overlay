@@ -44,9 +44,10 @@
             font-size: 22px;
             margin-bottom: 5px;
             display: flex;
-            gap: 10px;
+            gap: 12px;
             align-items: center;
             font-weight: bold;
+            white-space: nowrap;
         }
         .temp-cold { color: #00BFFF; animation: sharpPulse 2s infinite; }
         .temp-hot { color: #FF4500; animation: sharpPulse 2s infinite; }
@@ -63,20 +64,20 @@
             font-size: 20px;
             font-weight: bold;
         }
-        #moon-emoji { font-size: 36px; }
+        #moon-emoji { font-size: 36px; line-height: 1; }
     </style>
 </head>
 <body>
 
 <div id="container">
     <div id="greeting-box">
-        <span id="greeting-display"></span>
+        <span id="greeting-display">🚛 Welcome In Mother Truckers</span>
     </div>
     <div class="timestamp" id="datetime">00/00/0000 00:00:00</div>
     <div id="weather-container">
         <span id="weather-icon"></span>
         <span id="temp-display">SYNCING...</span>
-        <span id="weather-details"></span>
+        <span id="weather-details" style="margin-left: 5px;"></span>
     </div>
     <div id="moon-line">
         <span id="moon-emoji"></span>
@@ -85,7 +86,7 @@
 </div>
 
 <script>
-    // 1. HOLIDAY DATE HELPER
+    // 1. CLOCK & HOLIDAY LOGIC (Standard)
     function getNthDay(year, month, dayOfWeek, n) {
         let date = new Date(year, month, (n > 0 ? 1 : 0));
         if (n > 0) {
@@ -98,7 +99,6 @@
         return date;
     }
 
-    // 2. GREETING & HOLIDAY LOGIC
     function getGreeting(now) {
         const y = now.getFullYear();
         const m = now.getMonth();
@@ -113,30 +113,11 @@
             '11-25': { name: "Christmas Day", icon: "🎄" },
             '11-31': { name: "New Year's Eve", icon: "🎆" }
         };
-
         let holiday = hData[`${m}-${d}`] || null;
-
-        const mothersDay = getNthDay(y, 4, 0, 2);
-        const fathersDay = getNthDay(y, 5, 0, 3);
-        const memDay = getNthDay(y, 4, 1, -1);
-        const laborDay = getNthDay(y, 8, 1, 1);
-        const thanksGiving = getNthDay(y, 10, 4, 4);
-        const tawStart = getNthDay(y, 8, 0, 2);
-        const tawEnd = new Date(tawStart);
-        tawEnd.setDate(tawStart.getDate() + 6);
-
-        if (m === mothersDay.getMonth() && d === mothersDay.getDate()) holiday = { name: "Mother's Day", icon: "✿" };
-        if (m === fathersDay.getMonth() && d === fathersDay.getDate()) holiday = { name: "Father's Day", icon: "⚓" };
-        if (m === memDay.getMonth() && d === memDay.getDate()) holiday = { name: "Memorial Day", icon: "✪" };
-        if (m === laborDay.getMonth() && d === laborDay.getDate()) holiday = { name: "Labor Day", icon: "⚙" };
-        if (m === thanksGiving.getMonth() && d === thanksGiving.getDate()) holiday = { name: "Thanksgiving", icon: "🦃" };
-        if (now >= tawStart && now <= tawEnd) holiday = { name: "Trucker Appreciation", icon: "🚛" };
-
         if (holiday) return `${holiday.icon} Wishing viewers a Happy ${holiday.name}`;
         return "🚛 Welcome In Mother Truckers";
     }
 
-    // 3. CLOCK UPDATE
     function updateClock() {
         const now = new Date();
         const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -146,25 +127,21 @@
         const m = String(now.getMinutes()).padStart(2, '0');
         const s = String(now.getSeconds()).padStart(2, '0');
         document.getElementById('datetime').innerText = `${month}/${day}/${year} ${h}:${m}:${s}`;
-        document.getElementById('greeting-display').innerText = getGreeting(now);
     }
     setInterval(updateClock, 1000);
-    updateClock();
 
-    // 4. WEATHER & MOON FETCH (Directly from wttr.in)
-    function fetchWeather(location) {
-        // format=%c|%t|%h|%w|%p|%m (Last one is Moon Phase)
-        const url = `https://wttr.in/${location}?format=%c|%t|%h|%w|%p|%m&u&m`;
+    // 2. WEATHER FETCH (Follow Me GPS - No City Labels)
+    function fetchWeather(lat, lon) {
+        const url = `https://wttr.in/${lat},${lon}?format=%c|%t|%h|%w|%p&u&m`;
         fetch(url, { headers: { "User-Agent": "curl" } })
             .then(r => r.text())
             .then(text => {
                 let parts = text.replace(/"/g, '').split('|');
-                if (parts.length < 6) return;
+                if (parts.length < 5) return;
 
-                // Temp Logic
                 let rawTemp = parts[1].trim().replace('°F', '').replace('+', '');
                 let tempNum = parseInt(rawTemp);
-                let details = `${parts[2]} ${parts[3]} ${parts[4]}`.replace(/mm/g, '').replace(/\s+/g, ' ').trim();
+                let details = `${parts[2].trim()} ${parts[3].trim()} ${parts[4].trim().replace('mm', '')}`;
                 
                 const tempEl = document.getElementById('temp-display');
                 tempEl.innerText = `${rawTemp}°F`;
@@ -174,37 +151,56 @@
                 
                 document.getElementById('weather-icon').innerText = parts[0].trim();
                 document.getElementById('weather-details').innerText = details;
-
-                // Moon Display Logic
-                const moonIcon = parts[5].trim();
-                document.getElementById('moon-emoji').innerText = moonIcon;
-                
-                const moonMap = {
-                    '🌑': 'New Moon', '🌒': 'Waxing Crescent', '🌓': 'First Quarter', '🌔': 'Waxing Gibbous',
-                    '🌕': 'Full Moon', '🌖': 'Waning Gibbous', '🌗': 'Last Quarter', '🌘': 'Waning Crescent'
-                };
-                document.getElementById('moon-desc').innerText = moonMap[moonIcon] || 'Moon Phase';
-            })
-            .catch(() => {
-                document.getElementById('temp-display').innerText = "RECONNECTING...";
-                setTimeout(() => initWeather(), 30000);
             });
     }
 
-    function initWeather() {
-        const fallback = "Dallas";
+    // 3. LIVE GPS TRACKER
+    function startGPSTracking() {
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (p) => fetchWeather(`${p.coords.latitude.toFixed(4)},${p.coords.longitude.toFixed(4)}`),
-                () => fetchWeather(fallback),
-                { timeout: 8000 }
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    fetchWeather(position.coords.latitude.toFixed(4), position.coords.longitude.toFixed(4));
+                },
+                () => { fetchWeather("Norwood,Illinois"); }, // Secure fallback
+                { enableHighAccuracy: true, timeout: 10000 }
             );
         } else {
-            fetchWeather(fallback);
+            fetchWeather("Norwood,Illinois");
         }
     }
-    initWeather();
-    setInterval(initWeather, 900000);
+
+    // 4. MOON (Locked Waxing Crescent Math)
+    function getMoonPhase() {
+        const date = new Date();
+        let year = date.getFullYear();
+        let month = date.getMonth() + 1;
+        let day = date.getDate();
+        if (month < 3) { year--; month += 12; }
+        let a = Math.floor(year / 100);
+        let b = Math.floor(a / 4);
+        let c = 2 - a + b;
+        let e = Math.floor(365.25 * (year + 4716));
+        let f = Math.floor(30.6001 * (month + 1));
+        let jd = e + f + day + c - 1524.5;
+        let phase = ((jd - 2451549.5) / 29.53058867) % 1;
+
+        let emoji, desc;
+        if (phase < 0.02 || phase > 0.98) { emoji = '🌑'; desc = 'New Moon'; }
+        else if (phase < 0.24) { emoji = '🌒'; desc = 'Waxing Crescent'; }
+        else if (phase < 0.26) { emoji = '🌓'; desc = 'First Quarter'; }
+        else if (phase < 0.48) { emoji = '🌔'; desc = 'Waxing Gibbous'; }
+        else if (phase < 0.52) { emoji = '🌕'; desc = 'Full Moon'; }
+        else if (phase < 0.73) { emoji = '🌖'; desc = 'Waning Gibbous'; }
+        else if (phase < 0.76) { emoji = '🌗'; desc = 'Last Quarter'; }
+        else { emoji = '🌘'; desc = 'Waning Crescent'; }
+
+        document.getElementById('moon-emoji').innerText = emoji;
+        document.getElementById('moon-desc').innerText = desc;
+    }
+
+    startGPSTracking();
+    getMoonPhase();
+    setInterval(getMoonPhase, 3600000);
 </script>
 </body>
 </html>
