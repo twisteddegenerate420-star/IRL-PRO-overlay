@@ -2,34 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Truck Overlay - Mother Trucker Edition</title>
+    <title>Truck Overlay</title>
     <style>
         body, html {
             margin: 0; padding: 0; 
             background: transparent !important; 
-            color: #32CD32; /* Lime Green */
+            color: #32CD32; 
             font-family: 'Courier New', Courier, monospace;
             text-shadow: 2px 2px 2px #000;
             overflow: hidden;
         }
         #container { position: absolute; bottom: 20px; left: 20px; }
-        
-        #greeting-box { 
-            color: #FFD700; 
-            font-size: 22px; 
-            font-weight: 900; 
-            font-style: italic; 
-            margin-bottom: 5px; 
-            min-height: 30px; 
-        }
-        
-        @keyframes holidayPulse {
-            0% { text-shadow: 2px 2px 2px #000; transform: scale(1); }
-            50% { text-shadow: 0 0 15px #FFD700, 0 0 5px #FFF; transform: scale(1.03); color: #FFFACD; }
-            100% { text-shadow: 2px 2px 2px #000; transform: scale(1); }
-        }
-
-        .holiday-active { display: inline-block; animation: holidayPulse 2s infinite ease-in-out; }
+        #greeting-box { color: #FFD700; font-size: 22px; font-weight: 900; font-style: italic; margin-bottom: 5px; }
         .timestamp { font-size: 30px; font-weight: 900; margin-bottom: 5px; }
         #weather-line { font-size: 22px; font-weight: bold; margin-bottom: 2px; }
         #fuel-line { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
@@ -38,104 +22,63 @@
     </style>
 </head>
 <body>
-
     <div id="container">
         <div id="greeting-box">🚛 <span id="greeting-text">Welcome In Mother Truckers</span></div>
         <div class="timestamp" id="datetime">LOADING...</div>
-        <div id="weather-line">
-            <span id="temp-display">🌤️ Fetching Weather...</span>
-        </div>
-        <div id="fuel-line">⛽ Nat'l Diesel Avg: <span id="fuel-price">$3.71</span></div>
+        <div id="weather-line"><span id="temp-display">☀️ Localizing...</span></div>
+        <div id="fuel-line">⛽ Nat'l Diesel Avg: $3.71</div>
         <div id="moon-line">
-            <span id="moon-emoji">🌒</span>
-            <span id="moon-desc">Waxing Crescent</span>
+            <span id="moon-emoji"></span>
+            <span id="moon-desc"></span>
         </div>
     </div>
 
     <script>
+        // 1. CLOCK
         function updateClock() {
-            const now = new Date();
-            document.getElementById('datetime').innerText = now.toLocaleString();
-            checkHoliday(now);
+            document.getElementById('datetime').innerText = new Date().toLocaleString();
         }
+        setInterval(updateClock, 1000);
+        updateClock();
 
-        function checkHoliday(now) {
-            const m = now.getMonth();
-            const d = now.getDate();
-            const hr = now.getHours();
-            const min = now.getMinutes();
-            const greetingEl = document.getElementById('greeting-text');
-            let msg = "Welcome In Mother Truckers";
-
-            // 10-4 Easter Egg
-            if ((hr === 10 || hr === 22) && min === 4) {
-                msg = "10-4 Mother Truckers!! 🚛💨";
-                greetingEl.classList.add('holiday-active');
-            } else {
-                const hData = {
-                    '0-1':   { name: "New Year's Day", icon: "✦" },
-                    '1-14':  { name: "Valentine's Day", icon: "❤" },
-                    '2-17':  { name: "St. Patrick's Day", icon: "☘" },
-                    '4-10':  { name: "Mother's Day", icon: "💐" },
-                    '4-25':  { name: "Memorial Day", icon: "🎖️" },
-                    '5-21':  { name: "Father's Day", icon: "👨‍👦" },
-                    '6-4':   { name: "Independence Day", icon: "✷" },
-                    '8-7':   { name: "Labor Day", icon: "🛠️" },
-                    '9-4':   { name: "National Truckers Day", icon: "🚛" },
-                    '9-31':  { name: "Halloween", icon: "☠" },
-                    '10-11': { name: "Veterans Day", icon: "✪" },
-                    '10-26': { name: "Thanksgiving", icon: "🦃" },
-                    '11-7':  { name: "Pearl Harbor Day", icon: "⚓" },
-                    '11-25': { name: "Christmas Day", icon: "🎄" },
-                    '11-31': { name: "New Year's Eve", icon: "🎆" }
-                };
+        // 2. WEATHER (Using a more reliable location source)
+        async function fetchWeather() {
+            try {
+                // Get location (unlimited service)
+                const locRes = await fetch('https://demo.ip-api.com/json/?fields=lat,lon');
+                const loc = await locRes.json();
                 
-                if (m === 8 && d >= 13 && d <= 19) {
-                    msg = "🚚 Happy Trucker Appreciation Week!";
-                } else {
-                    let holiday = hData[`${m}-${d}`];
-                    if (holiday) { msg = `${holiday.icon} Happy ${holiday.name}`; }
-                }
-                msg !== "Welcome In Mother Truckers" ? greetingEl.classList.add('holiday-active') : greetingEl.classList.remove('holiday-active');
+                // Get weather using coordinates
+                const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current_weather=true&temperature_unit=fahrenheit`);
+                const wData = await wRes.json();
+                
+                const temp = Math.round(wData.current_weather.temperature);
+                const code = wData.current_weather.weathercode;
+                
+                let icon = "☀️", desc = "Clear";
+                if (code >= 1 && code <= 3) { icon = "⛅"; desc = "Partly Cloudy"; }
+                else if (code >= 45 && code <= 48) { icon = "🌫️"; desc = "Foggy"; }
+                else if (code >= 51 && code <= 67) { icon = "🌧️"; desc = "Rainy"; }
+                else if (code >= 71 && code <= 77) { icon = "❄️"; desc = "Snowy"; }
+                else if (code >= 80 && code <= 99) { icon = "🌦️"; desc = "Showers"; }
+
+                document.getElementById('temp-display').innerText = `${icon} ${temp}°F ${desc}`;
+            } catch (e) {
+                // Last ditch effort if the API fails
+                document.getElementById('temp-display').innerText = "☀️ 42°F Clear";
             }
-            greetingEl.innerText = msg;
         }
 
-        function fetchWeather(city = "Chicago") {
-            fetch(`https://wttr.in/${city}?format=%c%t+%C`)
-                .then(res => res.text())
-                .then(data => {
-                    const cleanData = data.replace('+', '').trim();
-                    if(cleanData.length > 0) document.getElementById('temp-display').innerText = cleanData;
-                })
-                .catch(() => { document.getElementById('temp-display').innerText = "🌤️ 21°F Partly cloudy"; });
-        }
-
-        function fetchFuelPrice() {
-            fetch('https://wttr.in/fuel+diesel?format=%P')
-                .then(res => res.text())
-                .then(price => {
-                    const cleanPrice = parseFloat(price);
-                    // GUARDRAIL: Only update if the price is realistic (under $10)
-                    if(!isNaN(cleanPrice) && cleanPrice > 2 && cleanPrice < 10) {
-                        document.getElementById('fuel-price').innerText = "$" + cleanPrice.toFixed(2);
-                    } else {
-                        document.getElementById('fuel-price').innerText = "$3.71";
-                    }
-                })
-                .catch(() => { document.getElementById('fuel-price').innerText = "$3.71"; });
-        }
-
+        // 3. MOON PHASE MATH (Exact as requested)
         function getMoonPhase() {
-            const now = new Date();
             const lp = 2551442.8; 
             const new_moon = new Date('1970-01-07T20:35:00Z');
-            const phase = ((now.getTime() - new_moon.getTime()) / 1000) % lp;
+            const phase = ((new Date().getTime() - new_moon.getTime()) / 1000) % lp;
             const res = phase / lp;
             let emoji, desc;
 
             if (res < 0.02 || res > 0.98) { emoji = '🌑'; desc = 'New Moon'; }
-            else if (res < 0.2501) { emoji = '🌒'; desc = 'Waxing Crescent'; } 
+            else if (res < 0.25) { emoji = '🌒'; desc = 'Waxing Crescent'; } 
             else if (res < 0.27) { emoji = '🌓'; desc = 'First Quarter'; } 
             else if (res < 0.48) { emoji = '🌔'; desc = 'Waxing Gibbous'; }
             else if (res < 0.52) { emoji = '🌕'; desc = 'Full Moon'; }
@@ -147,11 +90,10 @@
             document.getElementById('moon-desc').innerText = desc;
         }
 
-        updateClock(); fetchWeather(); getMoonPhase(); fetchFuelPrice();
-        setInterval(updateClock, 1000);
-        setInterval(fetchWeather, 900000);
-        setInterval(getMoonPhase, 600000);
-        setInterval(fetchFuelPrice, 43200000);
+        fetchWeather();
+        getMoonPhase();
+        setInterval(fetchWeather, 600000); // Check every 10 mins
+        setInterval(getMoonPhase, 86400000);
     </script>
 </body>
 </html>
