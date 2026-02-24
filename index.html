@@ -15,17 +15,21 @@
         #container { position: absolute; bottom: 20px; left: 20px; }
         #greeting-box { color: #FFD700; font-size: 22px; font-weight: 900; font-style: italic; margin-bottom: 5px; }
         .timestamp { font-size: 30px; font-weight: 900; margin-bottom: 5px; }
-        #weather-line { font-size: 22px; font-weight: bold; margin-bottom: 2px; }
+        #weather-line { font-size: 22px; font-weight: bold; margin-bottom: 2px; cursor: pointer; }
         #fuel-line { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
         #moon-line { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: bold; }
         #moon-emoji { font-size: 32px; }
+        
+        /* Temperature Alerts */
+        .cold { color: #00BFFF !important; } /* Deep Sky Blue */
+        .hot { color: #FF4500 !important; }  /* Orange Red */
     </style>
 </head>
 <body>
     <div id="container">
         <div id="greeting-box">🚛 <span id="greeting-text">Welcome In Mother Truckers</span></div>
         <div class="timestamp" id="datetime">LOADING...</div>
-        <div id="weather-line"><span id="temp-display">☀️ Fetching NOAA...</span></div>
+        <div id="weather-line" onclick="fetchWeather()"><span id="temp-display">Detecting...</span></div>
         <div id="fuel-line">⛽ Nat'l Diesel Avg: $3.71</div>
         <div id="moon-line">
             <span id="moon-emoji"></span>
@@ -34,47 +38,46 @@
     </div>
 
     <script>
-        // 1. CLOCK
         function updateClock() {
             document.getElementById('datetime').innerText = new Date().toLocaleString();
         }
         setInterval(updateClock, 1000);
         updateClock();
 
-        // 2. NWS / NOAA WEATHER (No City Name)
         async function fetchWeather() {
+            const display = document.getElementById('temp-display');
+            const line = document.getElementById('weather-line');
+            
             try {
-                // Get local coordinates via secure IP lookup
-                const locRes = await fetch('https://ipapi.co/json/');
-                const loc = await locRes.json();
+                const geoRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
+                const geo = await geoRes.json();
                 
-                // Get NWS Grid Point
-                const pointsRes = await fetch(`https://api.weather.gov/points/${loc.latitude},${loc.longitude}`);
-                const pointsData = await pointsRes.json();
+                const wUrl = `https://api.open-meteo.com/v1/forecast?latitude=${geo.latitude}&longitude=${geo.longitude}&current_weather=true&temperature_unit=fahrenheit`;
+                const wRes = await fetch(wUrl);
+                const wData = await wRes.json();
                 
-                // Get Forecast from NWS
-                const forecastRes = await fetch(pointsData.properties.forecastHourly);
-                const forecastData = await forecastRes.json();
+                const temp = Math.round(wData.current_weather.temperature);
+                const code = wData.current_weather.weathercode;
                 
-                const current = forecastData.properties.periods[0];
-                const temp = current.temperature;
-                const desc = current.shortForecast;
-                
-                // Simple Icon Logic
-                let icon = "☀️";
-                if (desc.includes("Cloudy")) icon = "⛅";
-                if (desc.includes("Rain") || desc.includes("Showers")) icon = "🌧️";
-                if (desc.includes("Snow")) icon = "❄️";
-                if (desc.includes("Fog")) icon = "🌫️";
+                // Visual logic for temp extremes
+                line.className = ""; 
+                if (temp <= 32) line.classList.add('cold');
+                if (temp >= 90) line.classList.add('hot');
 
-                document.getElementById('temp-display').innerText = `${icon} ${temp}°F ${desc}`;
-            } catch (e) {
-                // Emergency fallback to match your local observed temp
-                document.getElementById('temp-display').innerText = "☀️ 42°F Clear";
+                const conditions = {
+                    0: ["☀️", "Clear"], 1: ["🌤️", "Mainly Clear"], 2: ["⛅", "Partly Cloudy"], 3: ["☁️", "Overcast"],
+                    45: ["🌫️", "Foggy"], 51: ["🌧️", "Drizzle"], 61: ["🌧️", "Rain"], 71: ["❄️", "Snow"], 80: ["🌦️", "Showers"]
+                };
+                
+                const [icon, desc] = conditions[code] || ["🌤️", "Cloudy"];
+                display.innerText = `${icon} ${temp}°F ${desc}`;
+            } catch (err) {
+                const fallbackRes = await fetch('https://wttr.in/?format=%c+%t+%C');
+                const fallbackData = await fallbackRes.text();
+                display.innerText = fallbackData.replace(/\+/g, ' ').trim() || "Weather Unavailable";
             }
         }
 
-        // 3. MOON PHASE
         function getMoonPhase() {
             const lp = 2551442.8; 
             const new_moon = new Date('1970-01-07T20:35:00Z');
@@ -97,7 +100,7 @@
 
         fetchWeather();
         getMoonPhase();
-        setInterval(fetchWeather, 900000); 
+        setInterval(fetchWeather, 1800000); 
     </script>
 </body>
 </html>
