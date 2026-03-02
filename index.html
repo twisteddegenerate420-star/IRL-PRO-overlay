@@ -26,7 +26,7 @@
         const CONFIG = {
             W_REF: 600000, 
             C_REF: 1000,
-            F_REF: 86400000, // Once-a-day Diesel Pull
+            F_REF: 43200000, // 12 Hour Refresh (Twice a Day)
             L_EPOCH: new Date('2026-02-17T12:01:00Z'),
             MONTH: 29.530588 * 24 * 60 * 60 * 1000
         };
@@ -65,7 +65,6 @@
 
         async function fetchDiesel() {
             try {
-                // Pulls from a clean, public JSON feed of EIA data
                 const res = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://www.eia.gov/petroleum/gasdiesel/'));
                 const data = await res.json();
                 const match = data.contents.match(/U\.S\..*?(\d\.\d{3})/);
