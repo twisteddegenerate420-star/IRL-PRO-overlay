@@ -2,105 +2,77 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Truck Overlay</title>
+    <title>Truck Overlay PRO</title>
     <style>
-        body, html {
-            margin: 0; padding: 0; 
-            background: transparent !important; 
-            color: #32CD32; 
-            font-family: 'Courier New', Courier, monospace;
-            text-shadow: 2px 2px 2px #000;
-            overflow: hidden;
-        }
+        body, html { margin: 0; padding: 0; background: transparent !important; color: #32CD32; font-family: 'Courier New', Courier, monospace; text-shadow: 2px 2px 2px #000; overflow: hidden; }
         #container { position: absolute; bottom: 20px; left: 20px; }
         #greeting-box { color: #FFD700; font-size: 22px; font-weight: 900; font-style: italic; margin-bottom: 5px; }
         .timestamp { font-size: 30px; font-weight: 900; margin-bottom: 5px; }
-        #weather-line { font-size: 22px; font-weight: bold; margin-bottom: 2px; cursor: pointer; }
+        #weather-line { font-size: 22px; font-weight: bold; margin-bottom: 2px; }
         #fuel-line { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
         #moon-line { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: bold; }
         #moon-emoji { font-size: 32px; }
-        
-        /* Temperature Alerts */
-        .cold { color: #00BFFF !important; } /* Deep Sky Blue */
-        .hot { color: #FF4500 !important; }  /* Orange Red */
+        .cold { color: #00BFFF !important; }
+        .hot { color: #FF4500 !important; }
     </style>
 </head>
 <body>
     <div id="container">
         <div id="greeting-box">🚛 <span id="greeting-text">Welcome In Mother Truckers</span></div>
         <div class="timestamp" id="datetime">LOADING...</div>
-        <div id="weather-line" onclick="fetchWeather()"><span id="temp-display">Detecting...</span></div>
+        <div id="weather-line"><span id="temp-display">Initializing GPS...</span></div>
         <div id="fuel-line">⛽ Nat'l Diesel Avg: $3.71</div>
-        <div id="moon-line">
-            <span id="moon-emoji"></span>
-            <span id="moon-desc"></span>
-        </div>
+        <div id="moon-line"><span id="moon-emoji"></span><span id="moon-desc"></span></div>
     </div>
-
     <script>
+        const CONFIG = {
+            WEATHER_REFRESH: 600000,
+            CLOCK_REFRESH: 1000,
+            LUNAR_EPOCH: new Date('2026-02-17T12:01:00Z'),
+            SYNODIC_MONTH: 29.530588 * 24 * 60 * 60 * 1000
+        };
+
         function updateClock() {
             document.getElementById('datetime').innerText = new Date().toLocaleString();
         }
-        setInterval(updateClock, 1000);
-        updateClock();
 
         async function fetchWeather() {
             const display = document.getElementById('temp-display');
             const line = document.getElementById('weather-line');
-            
-            try {
-                const geoRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
-                const geo = await geoRes.json();
-                
-                const wUrl = `https://api.open-meteo.com/v1/forecast?latitude=${geo.latitude}&longitude=${geo.longitude}&current_weather=true&temperature_unit=fahrenheit`;
-                const wRes = await fetch(wUrl);
-                const wData = await wRes.json();
-                
-                const temp = Math.round(wData.current_weather.temperature);
-                const code = wData.current_weather.weathercode;
-                
-                // Visual logic for temp extremes
-                line.className = ""; 
-                if (temp <= 32) line.classList.add('cold');
-                if (temp >= 90) line.classList.add('hot');
+            if (!navigator.geolocation) return;
 
-                const conditions = {
-                    0: ["☀️", "Clear"], 1: ["🌤️", "Mainly Clear"], 2: ["⛅", "Partly Cloudy"], 3: ["☁️", "Overcast"],
-                    45: ["🌫️", "Foggy"], 51: ["🌧️", "Drizzle"], 61: ["🌧️", "Rain"], 71: ["❄️", "Snow"], 80: ["🌦️", "Showers"]
-                };
-                
-                const [icon, desc] = conditions[code] || ["🌤️", "Cloudy"];
-                display.innerText = `${icon} ${temp}°F ${desc}`;
-            } catch (err) {
-                const fallbackRes = await fetch('https://wttr.in/?format=%c+%t+%C');
-                const fallbackData = await fallbackRes.text();
-                display.innerText = fallbackData.replace(/\+/g, ' ').trim() || "Weather Unavailable";
-            }
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                try {
+                    const { latitude, longitude } = pos.coords;
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`);
+                    const data = await res.json();
+                    const temp = Math.round(data.current.temperature_2m);
+                    const lookup = { 0: ["☀️", "Clear"], 1: ["🌤️", "Mainly Clear"], 2: ["⛅", "Partly Cloudy"], 3: ["☁️", "Overcast"], 45: ["🌫️", "Foggy"], 51: ["🌧️", "Drizzle"], 61: ["🌧️", "Rain"], 71: ["❄️", "Snow"], 80: ["🌦️", "Showers"] };
+                    const [icon, desc] = lookup[data.current.weather_code] || ["🌤️", "Cloudy"];
+                    display.innerText = `${icon} ${temp}°F ${desc}`;
+                    line.className = (temp <= 32) ? 'cold' : (temp >= 85) ? 'hot' : '';
+                } catch (e) { display.innerText = "Weather Sync Error"; }
+            }, null, { enableHighAccuracy: true });
         }
 
-        function getMoonPhase() {
-            const lp = 2551442.8; 
-            const new_moon = new Date('1970-01-07T20:35:00Z');
-            const phase = ((new Date().getTime() - new_moon.getTime()) / 1000) % lp;
-            const res = phase / lp;
-            let emoji, desc;
-
-            if (res < 0.02 || res > 0.98) { emoji = '🌑'; desc = 'New Moon'; }
-            else if (res < 0.25) { emoji = '🌒'; desc = 'Waxing Crescent'; } 
-            else if (res < 0.27) { emoji = '🌓'; desc = 'First Quarter'; } 
-            else if (res < 0.48) { emoji = '🌔'; desc = 'Waxing Gibbous'; }
-            else if (res < 0.52) { emoji = '🌕'; desc = 'Full Moon'; }
-            else if (res < 0.73) { emoji = '🌖'; desc = 'Waning Gibbous'; }
-            else if (res < 0.77) { emoji = '🌗'; desc = 'Last Quarter'; }
-            else { emoji = '🌘'; desc = 'Waning Crescent'; }
-
-            document.getElementById('moon-emoji').innerText = emoji;
-            document.getElementById('moon-desc').innerText = desc;
+        function calculateLunarPhase() {
+            const diff = (new Date().getTime() - CONFIG.LUNAR_EPOCH.getTime()) % CONFIG.SYNODIC_MONTH;
+            const phase = diff / CONFIG.SYNODIC_MONTH;
+            const map = [
+                { t: 0.03, e: '🌑', d: 'New Moon' }, { t: 0.22, e: '🌒', d: 'Waxing Crescent' },
+                { t: 0.28, e: '🌓', d: 'First Quarter' }, { t: 0.47, e: '🌔', d: 'Waxing Gibbous' },
+                { t: 0.53, e: '🌕', d: 'Full Moon' }, { t: 0.72, e: '🌖', d: 'Waning Gibbous' },
+                { t: 0.78, e: '🌗', d: 'Last Quarter' }, { t: 1.00, e: '🌘', d: 'Waning Crescent' }
+            ];
+            const match = map.find(p => phase <= p.t) || map[0];
+            document.getElementById('moon-emoji').innerText = match.e;
+            document.getElementById('moon-desc').innerText = match.d;
         }
 
-        fetchWeather();
-        getMoonPhase();
-        setInterval(fetchWeather, 1800000); 
+        updateClock(); fetchWeather(); calculateLunarPhase();
+        setInterval(updateClock, CONFIG.CLOCK_REFRESH);
+        setInterval(fetchWeather, CONFIG.WEATHER_REFRESH);
+        setInterval(calculateLunarPhase, 86400000);
     </script>
 </body>
 </html>
