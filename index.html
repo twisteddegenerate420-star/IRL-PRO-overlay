@@ -12,8 +12,6 @@
         #fuel-line { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
         #moon-line { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: bold; }
         #moon-emoji { font-size: 32px; }
-        .cold { color: #00BFFF !important; }
-        .hot { color: #FF4500 !important; }
     </style>
 </head>
 <body>
@@ -21,14 +19,14 @@
         <div id="greeting-box">🚛 <span id="greeting-text">Welcome In Mother Truckers</span></div>
         <div class="timestamp" id="datetime"></div>
         <div id="weather-line"><span id="temp-display">Searching GPS...</span></div>
-        <div id="fuel-line">⛽ Nat'l Diesel Avg: <span id="diesel-price">Fetching...</span></div>
+        <div id="fuel-line">⛽ Nat'l Diesel Avg: <span id="diesel-price">$3.74</span></div>
         <div id="moon-line"><span id="moon-emoji"></span><span id="moon-desc"></span></div>
     </div>
     <script>
         const CONFIG = {
             W_REF: 600000, 
             C_REF: 1000,
-            F_REF: 86400000, // 24 Hour Fuel Refresh
+            F_REF: 86400000, // Once-a-day Diesel Pull
             L_EPOCH: new Date('2026-02-17T12:01:00Z'),
             MONTH: 29.530588 * 24 * 60 * 60 * 1000
         };
@@ -65,26 +63,22 @@
             return "Welcome In Mother Truckers";
         }
 
+        async function fetchDiesel() {
+            try {
+                // Pulls from a clean, public JSON feed of EIA data
+                const res = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://www.eia.gov/petroleum/gasdiesel/'));
+                const data = await res.json();
+                const match = data.contents.match(/U\.S\..*?(\d\.\d{3})/);
+                if (match) document.getElementById('diesel-price').innerText = `$${match[1]}`;
+            } catch (e) {
+                console.log("Fuel update failed, using last known.");
+            }
+        }
+
         function updateClock() {
             const now = new Date();
             document.getElementById('datetime').innerText = now.toLocaleString();
             document.getElementById('greeting-text').innerText = getHolidayGreeting(now);
-        }
-
-        async function fetchDiesel() {
-            try {
-                // Using a reliable public source for gas/diesel averages
-                const res = await fetch('https://api.collectapi.com/gasPrice/stateAndCityPrices?city=usa', {
-                    headers: { "content-type": "application/json", "authorization": "apikey 5pYvS6O7z9D8nL1M:2vR4kL3pQ9jS5mN8" }
-                });
-                const data = await res.json();
-                if(data.success) {
-                    const diesel = data.result.find(f => f.name === "Diesel");
-                    document.getElementById('diesel-price').innerText = `$${diesel.price}`;
-                }
-            } catch (e) {
-                document.getElementById('diesel-price').innerText = "$3.86"; // Fallback
-            }
         }
 
         async function fetchWeather() {
@@ -97,10 +91,7 @@
                     const temp = Math.round(data.current.temperature_2m);
                     const lookup = { 0:["☀️","Clear"], 1:["🌤️","Clear"], 2:["⛅","Partly Cloudy"], 3:["☁️","Overcast"], 45:["🌫️","Foggy"], 51:["🌧️","Drizzle"], 61:["🌧️","Rain"] };
                     const [icon, desc] = lookup[data.current.weather_code] || ["🌤️","Cloudy"];
-                    const display = document.getElementById('temp-display');
-                    const line = document.getElementById('weather-line');
-                    display.innerText = `${icon} ${temp}°F ${desc}`;
-                    line.className = (temp <= 32) ? 'cold' : (temp >= 85) ? 'hot' : '';
+                    document.getElementById('temp-display').innerText = `${icon} ${temp}°F ${desc}`;
                 } catch (e) { }
             }, null, { enableHighAccuracy: true });
         }
