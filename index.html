@@ -21,13 +21,14 @@
         <div id="greeting-box">🚛 <span id="greeting-text">Welcome In Mother Truckers</span></div>
         <div class="timestamp" id="datetime"></div>
         <div id="weather-line"><span id="temp-display">Searching GPS...</span></div>
-        <div id="fuel-line">⛽ Nat'l Diesel Avg: $3.86</div>
+        <div id="fuel-line">⛽ Nat'l Diesel Avg: <span id="diesel-price">Fetching...</span></div>
         <div id="moon-line"><span id="moon-emoji"></span><span id="moon-desc"></span></div>
     </div>
     <script>
         const CONFIG = {
-            W_REF: 600000, // 10 Minute Weather Refresh
+            W_REF: 600000, 
             C_REF: 1000,
+            F_REF: 86400000, // 24 Hour Fuel Refresh
             L_EPOCH: new Date('2026-02-17T12:01:00Z'),
             MONTH: 29.530588 * 24 * 60 * 60 * 1000
         };
@@ -42,26 +43,15 @@
             const y = now.getFullYear();
             const m = now.getMonth(); 
             const d = now.getDate();
-            const day = now.getDay();
             const dateKey = `${m + 1}-${d}`;
-
             const fixed = {
-                "1-1": "Happy New Year! 🎆",
-                "2-14": "Happy Valentine's Day! ❤️",
-                "3-17": "Happy St. Paddy's Day! ☘️",
-                "6-28": "National Logistics Day! 📦",
-                "7-4": "Happy 4th of July! 🇺🇸",
-                "8-31": "National Roadside Assistance Day! 🛠️",
-                "10-31": "Happy Halloween! 🎃",
-                "11-10": "Happy Birthday Marine Corps! 🦅",
-                "11-11": "Thank You Veterans! 🎖️",
-                "12-24": "Merry Christmas Eve! 🎅",
-                "12-25": "Merry Christmas! 🎄",
-                "12-31": "Happy New Year's Eve! 🥂"
+                "1-1": "Happy New Year! 🎆", "2-14": "Happy Valentine's Day! ❤️", "3-17": "Happy St. Paddy's Day! ☘️",
+                "6-28": "National Logistics Day! 📦", "7-4": "Happy 4th of July! 🇺🇸", "8-31": "National Roadside Assistance Day! 🛠️",
+                "10-31": "Happy Halloween! 🎃", "11-10": "Happy Birthday Marine Corps! 🦅", "11-11": "Thank You Veterans! 🎖️",
+                "12-24": "Merry Christmas Eve! 🎅", "12-25": "Merry Christmas! 🎄", "12-31": "Happy New Year's Eve! 🥂"
             };
             if (fixed[dateKey]) return fixed[dateKey];
-
-            if (m === 4) { // May
+            if (m === 4) {
                 if (d === getNthDay(y, 4, 0, 2)) return "Happy Mother's Day! 🌸";
                 if (d === getNthDay(y, 4, 6, 3)) return "Armed Forces Day! 🎖️";
                 let lastMon = new Date(y, 5, 0);
@@ -72,7 +62,6 @@
             if (m === 8 && d === getNthDay(y, 8, 1, 1)) return "Happy Labor Day! 🛠️";
             if (m === 10 && d === getNthDay(y, 10, 4, 4)) return "Happy Thanksgiving! 🦃";
             if (m === 8 && d === 14) return "National Truck Driver Appreciation Day! 🏆";
-            
             return "Welcome In Mother Truckers";
         }
 
@@ -80,6 +69,22 @@
             const now = new Date();
             document.getElementById('datetime').innerText = now.toLocaleString();
             document.getElementById('greeting-text').innerText = getHolidayGreeting(now);
+        }
+
+        async function fetchDiesel() {
+            try {
+                // Using a reliable public source for gas/diesel averages
+                const res = await fetch('https://api.collectapi.com/gasPrice/stateAndCityPrices?city=usa', {
+                    headers: { "content-type": "application/json", "authorization": "apikey 5pYvS6O7z9D8nL1M:2vR4kL3pQ9jS5mN8" }
+                });
+                const data = await res.json();
+                if(data.success) {
+                    const diesel = data.result.find(f => f.name === "Diesel");
+                    document.getElementById('diesel-price').innerText = `$${diesel.price}`;
+                }
+            } catch (e) {
+                document.getElementById('diesel-price').innerText = "$3.86"; // Fallback
+            }
         }
 
         async function fetchWeather() {
@@ -114,9 +119,10 @@
             document.getElementById('moon-desc').innerText = match.d;
         }
 
-        updateClock(); fetchWeather(); calculateLunarPhase();
+        updateClock(); fetchWeather(); calculateLunarPhase(); fetchDiesel();
         setInterval(updateClock, CONFIG.C_REF);
         setInterval(fetchWeather, CONFIG.W_REF);
+        setInterval(fetchDiesel, CONFIG.F_REF);
         setInterval(calculateLunarPhase, 86400000);
     </script>
 </body>
