@@ -68,7 +68,7 @@
         const CONFIG = {
             W_REF: 600000, 
             C_REF: 1000, 
-            F_REF: 43200000, // 12 Hour Refresh
+            F_REF: 43200000, 
             L_EPOCH: new Date('2026-02-17T12:01:00Z'),
             MONTH: 29.530588 * 24 * 60 * 60 * 1000 
         };
@@ -89,19 +89,20 @@
                 "1-1": "Happy New Year! 🎆",
                 "2-14": "Happy Valentine's Day! ❤️",
                 "3-17": "Happy St. Paddy's Day! ☘️",
-                "5-8": "V-E Day! ✌️",
-                "6-14": "Army Birthday & Flag Day! 🇺🇸",
+                "5-8": "V-E Day! 🎖️",
+                "6-14": "Army Birthday & Flag Day! 🪖🇺🇸",
                 "6-28": "National Logistics Day! 📦",
                 "7-4": "Happy 4th of July! 🇺🇸🎆",
-                "8-4": "Happy Birthday Coast Guard! ⚓",
+                "8-4": "Happy Birthday Coast Guard! 🛟",
                 "8-31": "National Roadside Assistance Day! 🛠️",
-                "9-2": "V-J Day! ⚓",
-                "9-11": "Patriot Day - Never Forget 🇺🇸",
+                "9-2": "V-J Day! 🎖️⚔️🫡",
+                "9-11": "Patriot Day - Never Forget 🇺🇸🇺🇸",
                 "9-18": "Happy Birthday USAF! ✈️",
                 "10-13": "Happy Birthday US Navy! ⚓",
                 "10-31": "Happy Halloween! 🎃",
                 "11-10": "Happy Birthday Marine Corps! 🦅",
                 "11-11": "Thank You Veterans! 🎖️",
+                "12-7": "Pearl Harbor Remembrance Day ⚓🇺🇸",
                 "12-13": "Happy Birthday National Guard! 🛡️",
                 "12-20": "Happy Birthday Space Force! 🚀",
                 "12-24": "Merry Christmas Eve! 🎅",
@@ -111,8 +112,7 @@
 
             if (fixed[dateKey]) return fixed[dateKey];
 
-            // Calculated Holidays
-            if (m === 4) { // May
+            if (m === 4) {
                 if (d === getNthDay(y, 4, 0, 2)) return "Happy Mother's Day! 🌸";
                 if (d === getNthDay(y, 4, 6, 3)) return "Armed Forces Day! 🎖️";
                 let lastMon = new Date(y, 5, 0);
@@ -121,8 +121,7 @@
             }
             if (m === 5 && d === getNthDay(y, 5, 0, 3)) return "Happy Father's Day! 🧢";
             
-            // Truck Driver Appreciation Week (Full Week Logic)
-            if (m === 8) { // September
+            if (m === 8) {
                 if (d === getNthDay(y, 8, 1, 1)) return "Happy Labor Day! 🛠️";
                 let startWeek = getNthDay(y, 8, 0, 2); 
                 if (d >= startWeek && d <= (startWeek + 6)) return "National Truck Driver Appreciation Week! 🏆";
@@ -154,7 +153,10 @@
             const dateStr = month + "/" + day + "/" + year;
             const timeStr = now.toLocaleTimeString([], { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-            document.getElementById('datetime').innerText = dateStr + " " + timeStr;
+            const timeBox = document.getElementById('datetime');
+            if (timeBox) {
+                timeBox.innerText = dateStr + " " + timeStr;
+            }
             document.getElementById('greeting-text').innerText = getHolidayGreeting(now);
         }
 
